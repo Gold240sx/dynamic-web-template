@@ -73,11 +73,21 @@ export default async function ShopPage() {
       .map((variant) => ({
         ...variant,
         stripeProductId: variant.stripeProductId ?? undefined,
-        images: images.filter((img) => img.variantId === variant.id),
+        images: images
+          .filter((img) => img.variantId === variant.id)
+          .map((img) => ({
+            id: img.id,
+            variantId: img.variantId,
+            url: img.url,
+            title: img.title,
+            order: img.order,
+          })),
         attributes: JSON.parse(
           variant.attributes as string,
         ) as ProductVariant["attributes"],
         description: variant.description ?? undefined,
+        createdAt: variant.createdAt ?? new Date(),
+        updatedAt: variant.updatedAt ?? new Date(),
       })),
   })) satisfies Product[];
 

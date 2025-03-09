@@ -190,3 +190,61 @@ export const variantImages = createTable(
     variantIdIndex: index("variant_id_idx").on(image.variantId),
   }),
 );
+
+export const orders = createTable(
+  "orders",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    stripeSessionId: text("stripe_session_id").notNull().unique(),
+    customerEmail: text("customer_email").notNull(),
+    customerName: text("customer_name").notNull(),
+    customerPhone: text("customer_phone"),
+    // Shipping details
+    requiresShipping: integer("requires_shipping", {
+      mode: "boolean",
+    }).notNull(),
+    shippingName: text("shipping_name"),
+    shippingAddressLine1: text("shipping_address_line1"),
+    shippingAddressLine2: text("shipping_address_line2"),
+    shippingCity: text("shipping_city"),
+    shippingState: text("shipping_state"),
+    shippingPostalCode: text("shipping_postal_code"),
+    shippingCountry: text("shipping_country"),
+    // Billing details
+    billingAddressLine1: text("billing_address_line1").notNull(),
+    billingAddressLine2: text("billing_address_line2"),
+    billingCity: text("billing_city").notNull(),
+    billingState: text("billing_state").notNull(),
+    billingPostalCode: text("billing_postal_code").notNull(),
+    billingCountry: text("billing_country").notNull(),
+    // Payment details
+    currency: text("currency").notNull(),
+    amountSubtotal: integer("amount_subtotal").notNull(),
+    amountTotal: integer("amount_total").notNull(),
+    amountTax: integer("amount_tax").notNull(),
+    amountShipping: integer("amount_shipping").notNull(),
+    paymentStatus: text("payment_status").notNull(),
+    // Shipping status
+    shippingStatus: text("shipping_status").notNull().default("pending"),
+    shippingCarrier: text("shipping_carrier"),
+    trackingNumber: text("tracking_number"),
+    // Metadata
+    metadata: text("metadata", { mode: "json" }),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    stripeSessionIdIdx: index("orders_stripe_session_id_idx").on(
+      table.stripeSessionId,
+    ),
+    customerEmailIdx: index("orders_customer_email_idx").on(
+      table.customerEmail,
+    ),
+  }),
+);

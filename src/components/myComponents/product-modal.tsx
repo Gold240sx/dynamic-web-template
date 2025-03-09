@@ -2,7 +2,6 @@
 
 import { motion } from "motion/react";
 import { X } from "lucide-react";
-import { useState } from "react";
 import type { Product } from "@/types/store";
 import Image from "next/image";
 
@@ -17,7 +16,6 @@ export function ProductModal({
   onClose,
   onAddToCart,
 }: ProductModalProps) {
-  const [quantity, setQuantity] = useState(1);
   const firstVariant = product.variants[0];
 
   return (

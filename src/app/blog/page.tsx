@@ -82,14 +82,6 @@ export default async function BlogListPage() {
 
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-4xl font-bold">Blog Posts</h1>
-        <div className="flex items-center gap-x-4">
-          <Link
-            href="/dashboard/blog"
-            className="rounded-lg bg-white/10 px-4 py-2 text-white hover:bg-white/20"
-          >
-            Create Post
-          </Link>
-        </div>
       </div>
 
       <ErrorBoundary>

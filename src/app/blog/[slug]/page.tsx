@@ -1,20 +1,26 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { api } from "~/trpc/server";
 import { formatDate } from "~/lib/utils";
+import { createCaller } from "~/server/api/root";
+import { createTRPCContext } from "~/server/api/trpc";
+import { generateMetadata } from "./metadata";
 
-interface BlogPostPageProps {
-  params: {
-    slug: string;
-  };
-}
+export const dynamic = "force-dynamic";
 
-export default async function BlogPostPage({ params }: BlogPostPageProps) {
-  const post = await api.post.getBySlug({ slug: params.slug });
+export { generateMetadata };
 
-  if (!post) {
-    notFound();
-  }
+export default async function BlogPostPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const caller = createCaller(
+    await createTRPCContext({ headers: new Headers() }),
+  );
+  const post = await caller.post.getBySlug({ slug });
+
+  if (!post) return notFound();
 
   return (
     <div className="container mx-auto max-w-3xl py-8">

@@ -23,7 +23,6 @@ export function ProductGrid({ products }: ProductGridProps) {
 
     const prices = liveVariants.map((v) => v.price);
     const minPrice = Math.min(...prices);
-    const maxPrice = Math.max(...prices);
 
     return prices.length > 1
       ? `from ${formatCurrency(minPrice)}`

@@ -1,12 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ShippingSettingsForm } from "~/components/forms/shipping-settings-form";
 import { api } from "~/trpc/react";
 
 export default function ShippingSettingsPage() {
-  const router = useRouter();
   const utils = api.useUtils();
 
   const { data: settings, isLoading } =

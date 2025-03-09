@@ -52,7 +52,8 @@ Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/ver
 - Automated Stripe Data Sync (1 way (Next -> Stripe), create, update, delete)
 - Address Validation
 - Phone Number collection on every order. Address only required on physical orders.
-- - Automated Reciept Generation
+- Automated Reciept Generation
+- UniqueRich Preview Cards for every Item in the store
 
 #### Store - Coming Soon
 
@@ -115,4 +116,5 @@ Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/ver
 
 - Resume Builder (client) (Coming Soon)
 - Reciept Management (client) (Coming Soon)
+
 # dynamic-web-template

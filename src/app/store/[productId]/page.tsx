@@ -1,7 +1,9 @@
+import { type Metadata } from "next";
 import { Suspense } from "react";
 import { StoreProvider } from "~/context/store-context";
 import { ProductHeader } from "~/components/store/product-header";
 import { ProductVariants } from "~/components/store/product-variants";
+import { ShareButton } from "~/components/store/share-button";
 import { notFound } from "next/navigation";
 import { db } from "~/server/db";
 import {
@@ -14,8 +16,58 @@ import { eq, inArray } from "drizzle-orm";
 import type { Product } from "~/types/store";
 
 interface ProductPageProps {
-  params: {
+  params: Promise<{
     productId: string;
+  }>;
+}
+
+export async function generateMetadata({
+  params,
+}: ProductPageProps): Promise<Metadata> {
+  const { productId } = await params;
+  const product = await db
+    .select()
+    .from(productsTable)
+    .where(eq(productsTable.id, productId))
+    .then((res) => res[0]);
+
+  if (!product) return { title: "Product Not Found" };
+
+  const variants = await db
+    .select()
+    .from(productVariants)
+    .where(eq(productVariants.productId, productId));
+
+  const firstVariant = variants[0];
+  const images = firstVariant
+    ? await db
+        .select()
+        .from(variantImages)
+        .where(eq(variantImages.variantId, firstVariant.id))
+        .then((res) => res[0])
+    : null;
+
+  return {
+    title: product.name,
+    description: product.description || `${product.name} - Shop now`,
+    openGraph: {
+      title: product.name,
+      description: product.description || `${product.name} - Shop now`,
+      images: images ? [images.url] : [],
+      type: "website",
+      ...(firstVariant && {
+        price: {
+          amount: (firstVariant.price / 100).toString(),
+          currency: "USD",
+        },
+      }),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: product.name,
+      description: product.description || `${product.name} - Shop now`,
+      images: images ? [images.url] : [],
+    },
   };
 }
 
@@ -88,11 +140,22 @@ async function ProductContent({ productId }: { productId: string }) {
       }),
   };
 
-  return <ProductVariants product={productWithVariants} />;
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-2xl font-bold">{product.name}</h1>
+        <ShareButton
+          title={product.name}
+          text={product.description || `Check out ${product.name}`}
+        />
+      </div>
+      <ProductVariants product={productWithVariants} />
+    </div>
+  );
 }
 
 async function ProductPage({ params }: ProductPageProps) {
-  const productId = params.productId;
+  const { productId } = await params;
 
   return (
     <StoreProvider>

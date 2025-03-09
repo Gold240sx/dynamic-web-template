@@ -1,14 +1,12 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { StoreHeader } from "./store-header";
 import { ProductGrid } from "~/components/myComponents/product-grid";
 import { api } from "~/trpc/react";
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 
 export function StoreContent() {
-  const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useQueryState("q", {
     history: "push",
     parse: (value) => value || null,

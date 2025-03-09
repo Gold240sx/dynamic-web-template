@@ -1,11 +1,10 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { stripe, handleStripeError } from "~/lib/stripe";
-import { env } from "~/env";
+import { env } from "~/env.js";
 import { db } from "~/server/db";
-import { eq, inArray } from "drizzle-orm";
-import { productVariants, shippingEstimates } from "~/server/db/schema";
-import { type ProductVariant } from "~/types/store";
+import { productVariants } from "~/server/db/schema";
+import { inArray } from "drizzle-orm";
 
 const shippingAddressSchema = z.object({
   line1: z.string(),

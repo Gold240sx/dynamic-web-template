@@ -18,11 +18,11 @@ export function StoreHeader({
   onCategoryChange,
   selectedCategory = "all",
 }: StoreHeaderProps) {
-  const { cart, cartCount, removeFromCart, updateQuantity } = useStore();
+  const store = useStore();
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-  const isStoreRoute = pathname === "/shop" || pathname === "/dashboard/store";
   const [category, setCategory] = useQueryState("category");
+  const isStoreRoute = pathname === "/shop" || pathname === "/dashboard/store";
 
   const handleSearch = useCallback(
     (query: string) => {
@@ -40,6 +40,10 @@ export function StoreHeader({
     },
     [onCategoryChange, setCategory],
   );
+
+  if (!store) return null;
+
+  const { cart, cartCount, removeFromCart, updateQuantity } = store;
 
   return (
     <>

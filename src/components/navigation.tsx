@@ -11,7 +11,7 @@ export function Navigation() {
     { href: "/", label: "Home" },
     { href: "/shop", label: "Shop" },
     { href: "/blog", label: "Blog" },
-    { href: "/dashboard/store", label: "Dashboard" },
+    { href: "/dashboard", label: "Dashboard" },
   ];
 
   return (

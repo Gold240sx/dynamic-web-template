@@ -159,9 +159,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useStore() {
+export function useStore(): StoreContextType {
   const context = useContext(StoreContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useStore must be used within a StoreProvider");
   }
   return context;

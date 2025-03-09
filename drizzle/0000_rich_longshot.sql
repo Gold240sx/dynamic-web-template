@@ -1,3 +1,37 @@
+CREATE TABLE `server-client-t3-blog_orders` (
+	`id` text PRIMARY KEY NOT NULL,
+	`stripe_session_id` text NOT NULL,
+	`customer_email` text NOT NULL,
+	`customer_name` text NOT NULL,
+	`customer_phone` text,
+	`requires_shipping` integer NOT NULL,
+	`shipping_name` text,
+	`shipping_address_line1` text,
+	`shipping_address_line2` text,
+	`shipping_city` text,
+	`shipping_state` text,
+	`shipping_postal_code` text,
+	`shipping_country` text,
+	`billing_address_line1` text NOT NULL,
+	`billing_address_line2` text,
+	`billing_city` text NOT NULL,
+	`billing_state` text NOT NULL,
+	`billing_postal_code` text NOT NULL,
+	`billing_country` text NOT NULL,
+	`currency` text NOT NULL,
+	`amount_subtotal` integer NOT NULL,
+	`amount_total` integer NOT NULL,
+	`amount_tax` integer NOT NULL,
+	`amount_shipping` integer NOT NULL,
+	`payment_status` text NOT NULL,
+	`shipping_status` text DEFAULT 'pending' NOT NULL,
+	`shipping_carrier` text,
+	`tracking_number` text,
+	`metadata` text,
+	`created_at` integer NOT NULL,
+	`updated_at` integer NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE `server-client-t3-blog_post` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`title` text(256) NOT NULL,
@@ -78,6 +112,9 @@ CREATE TABLE `server-client-t3-blog_variant_image` (
 	FOREIGN KEY (`variant_id`) REFERENCES `server-client-t3-blog_product_variants`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE UNIQUE INDEX `server-client-t3-blog_orders_stripe_session_id_unique` ON `server-client-t3-blog_orders` (`stripe_session_id`);--> statement-breakpoint
+CREATE INDEX `orders_stripe_session_id_idx` ON `server-client-t3-blog_orders` (`stripe_session_id`);--> statement-breakpoint
+CREATE INDEX `orders_customer_email_idx` ON `server-client-t3-blog_orders` (`customer_email`);--> statement-breakpoint
 CREATE UNIQUE INDEX `server-client-t3-blog_post_slug_unique` ON `server-client-t3-blog_post` (`slug`);--> statement-breakpoint
 CREATE INDEX `slug_idx` ON `server-client-t3-blog_post` (`slug`);--> statement-breakpoint
 CREATE INDEX `title_idx` ON `server-client-t3-blog_post` (`title`);--> statement-breakpoint

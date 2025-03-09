@@ -1,15 +1,12 @@
 "use client";
 
-import { Search, ShoppingBag, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { useState, useEffect, useRef, type FC } from "react";
-import { motion, useIsomorphicLayoutEffect } from "framer-motion";
 import Link from "next/link";
 import { api } from "~/trpc/react";
-import { useSearchParams, usePathname } from "next/navigation";
-import { useNuqs } from "~/lib/hooks/useNuqs";
-import { LinkComponent } from "./link-component";
-import { useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQueryState } from "nuqs";
+import CartItemButton from "./CartItemButton";
 
 interface TopBarProps {
   cartItemCount: number;
@@ -30,12 +27,9 @@ export const TopBar: FC<TopBarProps> = ({
 }) => {
   const searchParams = useSearchParams();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useQueryState("q");
   const [searchValue, setSearchValue] = useState(searchQuery ?? "");
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [isClient, setIsClient] = useNuqs<boolean>("isClient", false);
-  const [isCartOpen] = useQueryState("cart");
 
   const { data: categories } = api.category.all.useQuery();
 
@@ -56,18 +50,6 @@ export const TopBar: FC<TopBarProps> = ({
       setSearchValue("");
     }
   }, [searchParams]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  useIsomorphicLayoutEffect(() => {
-    setIsClient(true);
-  }, [setIsClient]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
@@ -115,9 +97,7 @@ export const TopBar: FC<TopBarProps> = ({
   };
 
   return (
-    <div
-      className={`sticky top-0 z-40 w-full border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950`}
-    >
+    <div className="sticky top-0 z-40 w-full border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
       <div className="flex h-12 items-center justify-between px-4">
         <Link
           href="/shop"
@@ -198,18 +178,10 @@ export const TopBar: FC<TopBarProps> = ({
             </div>
           )}
           <div>
-            <button
-              type="button"
-              onClick={onCartClick}
-              className="relative rounded-lg p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            >
-              <ShoppingBag className="h-4 w-4" />
-              <span
-                className={`absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-zinc-900 text-xs font-medium text-white dark:bg-white dark:text-zinc-900 ${cartItemCount > 0 ? "scale-100 opacity-100" : "scale-50 opacity-0"} transition-all duration-200`}
-              >
-                {cartItemCount}
-              </span>
-            </button>
+            <CartItemButton
+              cartItemCount={cartItemCount}
+              onCartClick={onCartClick}
+            />
           </div>
         </div>
       </div>

@@ -5,6 +5,7 @@ import { TRPCReactProvider } from "~/trpc/react";
 import { StoreProvider } from "~/context/store-context";
 import { Navigation } from "~/components/navigation";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { Toaster } from "~/components/ui/toaster";
 
 export const metadata = {
   title: "T3 Store",
@@ -24,6 +25,7 @@ export default function RootLayout({
           <StoreProvider>
             <Navigation />
             <NuqsAdapter>{children}</NuqsAdapter>
+            <Toaster />
           </StoreProvider>
         </TRPCReactProvider>
       </body>

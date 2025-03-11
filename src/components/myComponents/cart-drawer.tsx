@@ -1,23 +1,35 @@
-import { motion } from "motion/react";
+"use client";
+
+import { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { ArrowLeft, Minus, Plus, X } from "lucide-react";
 import type { CartItem } from "~/context/store-context";
 import Image from "next/image";
-import { api } from "~/trpc/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useQueryState } from "nuqs";
-import { useState } from "react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Elements } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
-import type { StripeAddressElementChangeEvent } from "@stripe/stripe-js";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 import { AddressForm } from "./address-form";
 import { env } from "~/env.js";
+import { useAuth } from "~/hooks/use-auth";
+import { api } from "~/trpc/react";
+import { useNameFormatter } from "~/hooks/use-name-formatter";
 
-// Initialize Stripe outside of component
-const stripePromise = loadStripe(env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+const US_STATES = [
+  /* ... state list ... */
+];
 
 interface CartDrawerProps {
   cart: CartItem[];
@@ -26,13 +38,23 @@ interface CartDrawerProps {
   onUpdateQuantity: (id: string, quantity: number) => void;
 }
 
-interface ShippingAddress {
+interface BillingAddress {
+  firstName: string;
+  lastName: string;
   line1: string;
   line2?: string;
   city: string;
   state: string;
-  postal_code: string;
+  postalCode: string;
   country: string;
+  phone: string;
+}
+
+type CheckoutStep = "cart" | "auth" | "shipping";
+
+interface CheckoutResponse {
+  url?: string;
+  error?: string;
 }
 
 export function CartDrawer({
@@ -42,20 +64,49 @@ export function CartDrawer({
   onUpdateQuantity,
 }: CartDrawerProps) {
   const router = useRouter();
-  const { mutateAsync: createCheckoutSession } =
-    api.checkout.createSession.useMutation();
+  const { user, loading: userLoading } = useAuth();
+  const formattedName = useNameFormatter(user?.name);
+  const [firstName, lastName] = useMemo(() => {
+    if (!formattedName) return ["", ""];
+    const parts = formattedName.split(" ");
+    return [parts[0] ?? "", parts.slice(1).join(" ") ?? ""];
+  }, [formattedName]);
 
-  const [checkoutStep, setCheckoutStep] = useQueryState("checkoutStep", {
-    defaultValue: "cart",
-  });
-  const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
+  const [checkoutStep, setCheckoutStep] = useQueryState<CheckoutStep>(
+    "checkoutStep",
+    {
+      defaultValue: "cart",
+      parse: (value) => {
+        if (value === "cart" || value === "auth" || value === "shipping") {
+          return value;
+        }
+        return "cart";
+      },
+    },
+  );
+  const [isGuest, setIsGuest] = useState(false);
+  const [showSavePrompt, setShowSavePrompt] = useState(false);
+  const [originalAddress, setOriginalAddress] = useState<BillingAddress | null>(
+    null,
+  );
+  const [address, setAddress] = useState<BillingAddress>(() => ({
+    firstName: "",
+    lastName: "",
     line1: "",
+    line2: "",
     city: "",
     state: "",
-    postal_code: "",
+    postalCode: "",
     country: "US",
-  });
+    phone: "",
+  }));
   const [email, setEmail] = useState("");
+
+  const { mutate: updateUser } = api.user.updateContactInfo.useMutation({
+    onSuccess: () => {
+      toast.success("Contact information saved");
+    },
+  });
 
   const total = cart.reduce(
     (sum, item) => sum + item.variant.price * item.quantity,
@@ -65,19 +116,114 @@ export function CartDrawer({
   const hasPhysicalItems = cart.some((item) => !item.variant.isDigital);
 
   const canIncreaseQuantity = (item: CartItem) => {
+    if (item.variant.isDigital) {
+      return item.quantity < 1;
+    }
     return item.variant.stock === -1 || item.quantity < item.variant.stock;
   };
 
-  const handleAddressChange = (event: StripeAddressElementChangeEvent) => {
-    if (event.complete) {
-      const address = event.value.address;
-      setShippingAddress({
-        line1: address?.line1 ?? "",
-        line2: address?.line2 ?? undefined,
-        city: address?.city ?? "",
-        state: address?.state ?? "",
-        postal_code: address?.postal_code ?? "",
-        country: address?.country ?? "US",
+  // Load user's address and name if available
+  useEffect(() => {
+    if (!user) return;
+
+    if (user.billingAddress) {
+      const savedAddress = user.billingAddress as BillingAddress;
+
+      setOriginalAddress(savedAddress);
+      setAddress({
+        firstName: firstName ?? savedAddress.firstName ?? "",
+        lastName: lastName ?? savedAddress.lastName ?? "",
+        line1: savedAddress.line1 ?? "",
+        line2: savedAddress.line2 ?? "",
+        city: savedAddress.city ?? "",
+        state: savedAddress.state ?? "",
+        postalCode: savedAddress.postalCode ?? "",
+        country: savedAddress.country ?? "US",
+        phone: savedAddress.phone ?? "",
+      });
+    } else if (firstName || lastName) {
+      setAddress((prev) => ({
+        ...prev,
+        firstName: firstName ?? prev.firstName,
+        lastName: lastName ?? prev.lastName,
+      }));
+    }
+
+    if (user.email) {
+      setEmail(user.email);
+    }
+  }, [user, firstName, lastName]);
+
+  const handleAddressChange = (newAddress: BillingAddress) => {
+    setAddress(newAddress);
+  };
+
+  const hasAddressChanged = useMemo(() => {
+    if (!originalAddress || !user) return false;
+    return Object.keys(originalAddress).some((key) => {
+      const k = key as keyof BillingAddress;
+      return originalAddress[k] !== address[k];
+    });
+  }, [originalAddress, address, user]);
+
+  const proceedToCheckout = async (shouldSave = false) => {
+    try {
+      // If user is signed in and shouldSave is true, save the address
+      if (user && !isGuest && shouldSave) {
+        updateUser({
+          userId: user.id,
+          billingAddress: address,
+        });
+      }
+
+      // Create checkout session
+      const response = await fetch("/api/stripe/create-checkout-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          items: cart.map((item) => ({
+            id: item.variant.id,
+            quantity: item.quantity,
+            price: item.variant.price,
+            name: `${item.productName} - ${item.variant.name}`,
+            stripeProductId: item.variant.stripeProductId!,
+            isDigital: item.variant.isDigital,
+          })),
+          email,
+          address: hasPhysicalItems ? address : undefined,
+        }),
+      });
+
+      const result = (await response.json()) as CheckoutResponse;
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "Failed to create checkout session");
+      }
+
+      if (result.url) {
+        router.push(result.url);
+      } else {
+        toast("Checkout Failed", {
+          description: "Failed to create checkout session",
+          action: {
+            label: "Try Again",
+            onClick: () => void proceedToCheckout(),
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Checkout error:", error);
+      toast("Checkout Error", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to create checkout session",
+        action: {
+          label: "Try Again",
+          onClick: () => void proceedToCheckout(),
+        },
       });
     }
   };
@@ -103,19 +249,28 @@ export function CartDrawer({
         return;
       }
 
-      // For physical items, move to shipping step
-      if (hasPhysicalItems && checkoutStep === "cart") {
-        void setCheckoutStep("shipping");
+      // If at cart step, determine next step
+      if (checkoutStep === "cart") {
+        // If user is loading, wait
+        if (userLoading) return;
+
+        // If user is signed in or already chose guest checkout, go to shipping
+        if (user || isGuest) {
+          void setCheckoutStep("shipping");
+          return;
+        }
+
+        // Otherwise, go to auth step
+        void setCheckoutStep("auth");
         return;
       }
 
-      // For digital items, collect email first
-      if (!hasPhysicalItems && !email) {
-        void setCheckoutStep("shipping");
+      // If at auth step, user needs to choose sign in or guest
+      if (checkoutStep === "auth") {
         return;
       }
 
-      // Validate email format
+      // At shipping step, validate information
       const emailRegex = new RegExp(
         "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
       );
@@ -124,48 +279,205 @@ export function CartDrawer({
         return;
       }
 
-      // Check if shipping address is needed and valid
-      if (hasPhysicalItems && !shippingAddress.line1) {
-        toast.error("Please enter a valid shipping address");
+      if (hasPhysicalItems) {
+        if (
+          !address.firstName ||
+          !address.lastName ||
+          !address.line1 ||
+          !address.city ||
+          !address.state ||
+          !address.postalCode
+        ) {
+          toast.error("Please enter a complete shipping address");
+          return;
+        }
+      }
+
+      // If user is signed in and address has changed, show save prompt
+      if (user && !isGuest && hasAddressChanged) {
+        setShowSavePrompt(true);
         return;
       }
 
-      const session = await createCheckoutSession({
-        items: cart.map((item) => ({
-          id: item.variant.id,
-          quantity: item.quantity,
-          price: item.variant.price,
-          name: `${item.productName} - ${item.variant.name}`,
-          stripeProductId: item.variant.stripeProductId!,
-          isDigital: item.variant.isDigital,
-        })),
-        shippingAddress: hasPhysicalItems ? shippingAddress : undefined,
-        email,
-      });
-
-      if (session?.url) {
-        router.push(session.url);
-      } else {
-        toast("Checkout Failed", {
-          description: "Failed to create checkout session",
-          action: {
-            label: "Try Again",
-            onClick: () => void handleCheckout(),
-          },
-        });
-      }
-    } catch (err) {
-      console.error("Checkout error:", err);
+      // Otherwise proceed directly to checkout
+      await proceedToCheckout(false);
+    } catch (error) {
+      console.error("Checkout error:", error);
       toast("Checkout Error", {
         description:
-          err instanceof Error
-            ? err.message
+          error instanceof Error
+            ? error.message
             : "Failed to create checkout session",
         action: {
           label: "Try Again",
           onClick: () => void handleCheckout(),
         },
       });
+    }
+  };
+
+  const renderShippingStep = () => (
+    <div className="flex-1 space-y-4 overflow-y-auto p-4">
+      <div className="space-y-4">
+        <div>
+          <Label htmlFor="email">Email for Receipt</Label>
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            className="border-none !bg-zinc-800"
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+            required
+            disabled={!isGuest && !!user}
+          />
+        </div>
+        {hasPhysicalItems && (
+          <AddressForm
+            onAddressChange={handleAddressChange}
+            initialAddress={address}
+            firstName={firstName}
+            lastName={lastName}
+            className="[&_*]:border-none [&_input]:border-none [&_input]:!bg-zinc-800 [&_select]:border-none [&_select]:!bg-zinc-800"
+          />
+        )}
+      </div>
+    </div>
+  );
+
+  const renderStepContent = () => {
+    // If we're at auth step but user is signed in, redirect to shipping
+    if (checkoutStep === "auth" && user) {
+      void setCheckoutStep("shipping");
+      return null;
+    }
+
+    switch (checkoutStep) {
+      case "auth":
+        return (
+          <div className="flex flex-col gap-4 p-4">
+            <h2 className="text-lg font-medium">Continue as...</h2>
+            <Button
+              onClick={() => {
+                const currentPath = window.location.pathname;
+                const searchParams = new URLSearchParams(
+                  window.location.search,
+                );
+                searchParams.set("cartOpen", "true");
+                const returnUrl = `${currentPath}?${searchParams.toString()}`;
+                router.push(
+                  `/signin?redirectTo=${encodeURIComponent(returnUrl)}`,
+                );
+              }}
+              className="w-full"
+              variant="outline"
+            >
+              Sign In
+            </Button>
+            <p className="text-sm text-zinc-500">
+              If you sign in, you&apos;ll be directed right back here.
+            </p>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-zinc-500">or</span>
+              </div>
+            </div>
+            <Button
+              onClick={() => {
+                setIsGuest(true);
+                void setCheckoutStep("shipping");
+              }}
+              className="w-full"
+            >
+              Continue as Guest
+            </Button>
+          </div>
+        );
+
+      case "shipping":
+        return renderShippingStep();
+
+      default:
+        return (
+          <div className="flex-1 space-y-4 overflow-y-auto p-4">
+            {cart.map((item) => (
+              <div
+                key={item.id}
+                className="flex gap-4 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/50"
+              >
+                <div className="relative h-24 w-24">
+                  <Image
+                    src={item.variant.images?.[0]?.url ?? "/placeholder.jpg"}
+                    alt={item.variant.name ?? "Product image"}
+                    fill
+                    sizes="(max-width: 768px) 96px, 96px"
+                    priority={false}
+                    className="rounded-md object-cover"
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="truncate text-base font-medium">
+                        {item.productName}
+                      </h3>
+                      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                        {item.variant.name}
+                      </p>
+                      {item.variant.stock !== -1 && (
+                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                          {item.variant.stock} in stock
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => onRemoveFromCart(item.id)}
+                      className="ml-2 rounded-full p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <button
+                      onClick={() =>
+                        onUpdateQuantity(
+                          item.id,
+                          Math.max(1, item.quantity - 1),
+                        )
+                      }
+                      className="rounded-md p-1 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-300"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="min-w-[2rem] text-center">
+                      {item.quantity}
+                    </span>
+                    <button
+                      onClick={() =>
+                        canIncreaseQuantity(item) &&
+                        onUpdateQuantity(item.id, item.quantity + 1)
+                      }
+                      disabled={!canIncreaseQuantity(item)}
+                      className={`rounded-md p-1 ${
+                        canIncreaseQuantity(item)
+                          ? "text-zinc-500 hover:bg-zinc-200 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-300"
+                          : "cursor-not-allowed text-zinc-300 dark:text-zinc-600"
+                      }`}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p className="mt-1 text-base font-medium">
+                    ${(item.variant.price * item.quantity).toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
     }
   };
 
@@ -187,9 +499,17 @@ export function CartDrawer({
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between border-b border-zinc-200 p-4 dark:border-zinc-800">
             <div className="flex items-center gap-2">
-              {checkoutStep === "shipping" && (
+              {checkoutStep !== "cart" && (
                 <button
-                  onClick={() => void setCheckoutStep("cart")}
+                  onClick={() =>
+                    void setCheckoutStep(
+                      checkoutStep === "shipping"
+                        ? isGuest
+                          ? "auth"
+                          : "cart"
+                        : "cart",
+                    )
+                  }
                   className="rounded-lg p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -198,7 +518,9 @@ export function CartDrawer({
               <h2 className="text-lg font-medium">
                 {checkoutStep === "cart"
                   ? "Shopping Cart"
-                  : "Shipping Information"}
+                  : checkoutStep === "auth"
+                    ? "Checkout"
+                    : "Shipping Information"}
               </h2>
             </div>
             <button
@@ -209,102 +531,7 @@ export function CartDrawer({
             </button>
           </div>
 
-          {checkoutStep === "cart" ? (
-            <div className="flex-1 space-y-4 overflow-y-auto p-4">
-              {cart.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex gap-4 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800/50"
-                >
-                  <div className="relative h-24 w-24">
-                    <Image
-                      src={item.variant.images?.[0]?.url ?? "/placeholder.jpg"}
-                      alt={item.variant.name ?? "Product image"}
-                      fill
-                      sizes="(max-width: 768px) 96px, 96px"
-                      priority={false}
-                      className="rounded-md object-cover"
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="truncate text-base font-medium">
-                          {item.productName}
-                        </h3>
-                        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                          {item.variant.name}
-                        </p>
-                        {item.variant.stock !== -1 && (
-                          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                            {item.variant.stock} in stock
-                          </p>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => onRemoveFromCart(item.id)}
-                        className="ml-2 rounded-full p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-700"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <button
-                        onClick={() =>
-                          onUpdateQuantity(
-                            item.id,
-                            Math.max(1, item.quantity - 1),
-                          )
-                        }
-                        className="rounded-md p-1 text-zinc-500 hover:bg-zinc-200 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-300"
-                      >
-                        <Minus className="h-4 w-4" />
-                      </button>
-                      <span className="min-w-[2rem] text-center">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() =>
-                          canIncreaseQuantity(item) &&
-                          onUpdateQuantity(item.id, item.quantity + 1)
-                        }
-                        disabled={!canIncreaseQuantity(item)}
-                        className={`rounded-md p-1 ${
-                          canIncreaseQuantity(item)
-                            ? "text-zinc-500 hover:bg-zinc-200 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-zinc-300"
-                            : "cursor-not-allowed text-zinc-300 dark:text-zinc-600"
-                        }`}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <p className="mt-1 text-base font-medium">
-                      ${(item.variant.price * item.quantity).toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex-1 space-y-4 overflow-y-auto p-4">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="email">Email for Receipt</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    required
-                  />
-                </div>
-                <Elements stripe={stripePromise}>
-                  <AddressForm onAddressChange={handleAddressChange} />
-                </Elements>
-              </div>
-            </div>
-          )}
+          {renderStepContent()}
 
           <div className="border-t border-zinc-200 p-4 dark:border-zinc-800">
             <div className="mb-4 flex justify-between">
@@ -316,19 +543,41 @@ export function CartDrawer({
                 Shipping costs will be calculated at checkout
               </p>
             )}
-            <button
-              onClick={handleCheckout}
-              disabled={
-                cart.length === 0 || (checkoutStep === "shipping" && !email)
-              }
-              className="w-full rounded-lg bg-zinc-900 py-3 text-base font-medium text-white transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
-            >
-              {cart.length === 0
-                ? "Cart is empty"
-                : checkoutStep === "cart"
-                  ? "Checkout"
-                  : "Payment"}
-            </button>
+            {showSavePrompt ? (
+              <div className="mb-4 space-y-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-700">
+                <p className="text-sm">
+                  Would you like to save your shipping information for future
+                  orders?
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => void proceedToCheckout(false)}
+                  >
+                    No, Continue
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    onClick={() => void proceedToCheckout(true)}
+                  >
+                    Yes, Save
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                onClick={handleCheckout}
+                disabled={cart.length === 0}
+                className="w-full"
+              >
+                {checkoutStep === "cart"
+                  ? "Proceed to Checkout"
+                  : checkoutStep === "auth"
+                    ? "Continue"
+                    : "Proceed to Payment"}
+              </Button>
+            )}
           </div>
         </div>
       </motion.div>

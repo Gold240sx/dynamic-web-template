@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, publicProcedure } from "../trpc";
 import {
   products,
   productVariants,
@@ -11,6 +11,11 @@ import { nanoid } from "nanoid";
 import { TRPCError } from "@trpc/server";
 import { type Product } from "~/types/store";
 import { stripe } from "~/lib/stripe";
+import { db } from "../../db";
+import { type SQL } from "drizzle-orm";
+import { subscriptionPrices, subscriptionProducts } from "../../db/schema";
+import { type SubscriptionProductWithPrices } from "../../db/types";
+import { type InferModel } from "drizzle-orm";
 
 const variantSchema = z
   .object({
@@ -92,6 +97,15 @@ async function updateStripeProduct(
 
   return product.id;
 }
+
+type ProductWithRelations = InferModel<typeof products> & {
+  category: InferModel<typeof productCategories> | null;
+  variants: Array<
+    InferModel<typeof productVariants> & {
+      images: Array<InferModel<typeof variantImages>>;
+    }
+  >;
+};
 
 export const productRouter = createTRPCRouter({
   create: publicProcedure
@@ -334,41 +348,60 @@ export const productRouter = createTRPCRouter({
     .input(
       z
         .object({
-          onlyLive: z.boolean().default(true),
+          limit: z.number().min(1).max(100).optional(),
+          cursor: z.string().optional(),
+          onlyLive: z.boolean().optional(),
         })
         .optional(),
     )
-    .query(async ({ ctx, input }): Promise<Product[]> => {
-      console.log("GetAll Query Input:", input);
-      const productsData = await ctx.db
+    .query(async ({ ctx }) => {
+      // Get all products
+      const allProducts = await ctx.db
         .select()
         .from(products)
         .orderBy(desc(products.createdAt));
 
-      const productIds = productsData.map((p) => p.id);
-      console.log("Found Product IDs:", productIds);
+      // Get live variants
+      const variants = await ctx.db
+        .select()
+        .from(productVariants)
+        .where(eq(productVariants.isLive, true));
 
-      const variants =
-        productIds.length > 0
+      // Filter products that have live variants
+      const productsWithLiveVariants = allProducts.filter((product) =>
+        variants.some((v) => v.productId === product.id),
+      );
+
+      // Get categories for these products
+      const categories =
+        productsWithLiveVariants.length > 0
+          ? await ctx.db
+              .select()
+              .from(productCategories)
+              .where(
+                inArray(
+                  productCategories.id,
+                  productsWithLiveVariants.map((p) => p.categoryId),
+                ),
+              )
+          : [];
+
+      // Get all variants for these products
+      const allVariants =
+        productsWithLiveVariants.length > 0
           ? await ctx.db
               .select()
               .from(productVariants)
-              .where(inArray(productVariants.productId, productIds))
+              .where(
+                inArray(
+                  productVariants.productId,
+                  productsWithLiveVariants.map((p) => p.id),
+                ),
+              )
           : [];
 
-      console.log(
-        "Found Variants:",
-        variants.map((v) => ({
-          id: v.id,
-          productId: v.productId,
-          name: v.name,
-          isLive: v.isLive,
-          stripeProductId: v.stripeProductId,
-        })),
-      );
-
-      const variantIds = variants.map((v) => v.id);
-
+      // Get variant images
+      const variantIds = allVariants.map((v) => v.id);
       const images =
         variantIds.length > 0
           ? await ctx.db
@@ -377,104 +410,34 @@ export const productRouter = createTRPCRouter({
               .where(inArray(variantImages.variantId, variantIds))
           : [];
 
-      const categories =
-        productIds.length > 0
-          ? await ctx.db
-              .select()
-              .from(productCategories)
-              .where(
-                inArray(
-                  productCategories.id,
-                  productsData.map((p) => p.categoryId),
-                ),
-              )
-          : [];
-
-      // Filter out products that have no live variants when onlyLive is true
-      const filteredProducts = input?.onlyLive
-        ? productsData.filter((product) => {
-            const hasLiveVariants = variants.some(
-              (v) => v.productId === product.id && v.isLive,
-            );
-            console.log(
-              `Product ${product.id} has live variants:`,
-              hasLiveVariants,
-            );
-            return hasLiveVariants;
-          })
-        : productsData;
-
-      console.log(
-        "Filtered Products:",
-        filteredProducts.map((p) => ({
-          id: p.id,
-          name: p.name,
-          variants: variants
-            .filter((v) => v.productId === p.id)
-            .map((v) => ({
-              id: v.id,
-              name: v.name,
-              isLive: v.isLive,
-              stripeProductId: v.stripeProductId,
-            })),
-        })),
-      );
-
-      const result = filteredProducts.map((product) => {
-        const productVariants = variants
+      // Construct the final product objects
+      return productsWithLiveVariants.map((product) => ({
+        ...product,
+        category:
+          categories.find((c) => c.id === product.categoryId)?.name ??
+          "Uncategorized",
+        variants: allVariants
           .filter((v) => v.productId === product.id)
-          .filter((v) => !input?.onlyLive || v.isLive)
           .map((variant) => ({
             ...variant,
             stripeProductId: variant.stripeProductId ?? undefined,
-            images: images.filter((img) => img.variantId === variant.id),
+            images: images
+              .filter((img) => img.variantId === variant.id)
+              .map((img) => ({
+                id: img.id,
+                variantId: img.variantId,
+                url: img.url,
+                title: img.title,
+                order: img.order,
+              })),
             attributes: JSON.parse(variant.attributes as string) as Record<
               string,
               string | number | boolean
             >,
             description: variant.description ?? undefined,
-            updatedAt: variant.updatedAt
-              ? new Date(variant.updatedAt)
-              : new Date(),
-          }));
-
-        console.log(
-          `Product ${product.id} filtered variants:`,
-          productVariants.map((v) => ({
-            id: v.id,
-            name: v.name,
-            isLive: v.isLive,
-            stripeProductId: v.stripeProductId,
+            createdAt: variant.createdAt ?? new Date(),
+            updatedAt: variant.updatedAt ?? new Date(),
           })),
-        );
-
-        return {
-          ...product,
-          isLive: variants.some((v) => v.productId === product.id && v.isLive),
-          category:
-            categories.find((c) => c.id === product.categoryId)?.name ??
-            "Uncategorized",
-          variants: productVariants,
-          updatedAt: product.updatedAt
-            ? new Date(product.updatedAt)
-            : new Date(),
-        };
-      });
-
-      console.log(
-        "Final Result:",
-        result.map((p) => ({
-          id: p.id,
-          name: p.name,
-          isLive: p.isLive,
-          variants: p.variants.map((v) => ({
-            id: v.id,
-            name: v.name,
-            isLive: v.isLive,
-            stripeProductId: v.stripeProductId,
-          })),
-        })),
-      );
-      return result;
+      }));
     }),
 });

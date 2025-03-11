@@ -1,3 +1,5 @@
+// MARK: - Products
+
 export interface ProductVariantImage {
   id: string;
   variantId: string;

@@ -37,16 +37,32 @@ export interface StoreContextType {
 export const StoreContext = createContext<StoreContextType | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    if (typeof window === "undefined") return [];
-    const saved = Cookies.get(CART_COOKIE_KEY);
-    if (!saved) return [];
-    try {
-      return JSON.parse(saved) as CartItem[];
-    } catch {
-      return [];
-    }
-  });
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Type guard for CartItem
+  function isValidCartItem(item: unknown): item is CartItem {
+    const cartItem = item as CartItem;
+    return (
+      typeof item === "object" &&
+      item !== null &&
+      typeof cartItem.id === "string" &&
+      typeof cartItem.productId === "string" &&
+      typeof cartItem.productName === "string" &&
+      typeof cartItem.quantity === "number" &&
+      typeof cartItem.variant === "object" &&
+      cartItem.variant !== null &&
+      typeof cartItem.variant.id === "string" &&
+      typeof cartItem.variant.name === "string" &&
+      typeof cartItem.variant.price === "number" &&
+      typeof cartItem.variant.isDigital === "boolean" &&
+      (cartItem.variant.stock === -1 ||
+        typeof cartItem.variant.stock === "number") &&
+      (typeof cartItem.variant.stripeProductId === "string" ||
+        cartItem.variant.stripeProductId === undefined) &&
+      typeof cartItem.variant.isLive === "boolean"
+    );
+  }
 
   // Load cart from cookies on mount
   useEffect(() => {
@@ -55,37 +71,60 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       try {
         const parsedCart = JSON.parse(savedCart) as CartItem[];
         if (Array.isArray(parsedCart) && parsedCart.every(isValidCartItem)) {
-          setCart(parsedCart);
+          // Add empty product object if it's missing (from simplified format)
+          const cartWithProducts = parsedCart.map((item) => ({
+            ...item,
+            product: item.product ?? {
+              id: item.productId,
+              name: item.productName,
+              variants: [item.variant],
+            },
+          }));
+          setCart(cartWithProducts);
         }
       } catch (error) {
         console.error("Failed to parse cart from cookie:", error);
         Cookies.remove(CART_COOKIE_KEY);
       }
     }
+    setIsInitialized(true);
   }, []);
 
-  // Type guard for CartItem
-  function isValidCartItem(item: unknown): item is CartItem {
-    return (
-      typeof item === "object" &&
-      item !== null &&
-      "id" in item &&
-      "productId" in item &&
-      "productName" in item &&
-      "variant" in item &&
-      "quantity" in item &&
-      typeof (item as CartItem).quantity === "number"
-    );
-  }
-
-  // Save cart to cookies whenever it changes
+  // Save cart to cookies whenever it changes, but only after initialization
   useEffect(() => {
-    if (cart.length === 0) {
-      Cookies.remove(CART_COOKIE_KEY);
-    } else {
-      Cookies.set(CART_COOKIE_KEY, JSON.stringify(cart), { expires: 7 }); // Expires in 7 days
+    if (!isInitialized) return;
+
+    try {
+      if (cart.length === 0) {
+        Cookies.remove(CART_COOKIE_KEY);
+      } else {
+        // Simplify the cart data before storing in cookie
+        const simplifiedCart = cart.map((item) => ({
+          id: item.id,
+          productId: item.productId,
+          productName: item.productName,
+          variant: {
+            id: item.variant.id,
+            name: item.variant.name,
+            price: item.variant.price,
+            images: item.variant.images,
+            isDigital: item.variant.isDigital,
+            stock: item.variant.stock,
+            stripeProductId: item.variant.stripeProductId,
+            isLive: item.variant.isLive,
+          },
+          quantity: item.quantity,
+        }));
+        Cookies.set(CART_COOKIE_KEY, JSON.stringify(simplifiedCart), {
+          expires: 7,
+          path: "/",
+          sameSite: "strict",
+        });
+      }
+    } catch (error) {
+      console.error("Failed to save cart to cookie:", error);
     }
-  }, [cart]);
+  }, [cart, isInitialized]);
 
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0);
 

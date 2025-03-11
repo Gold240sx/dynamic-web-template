@@ -35,35 +35,48 @@ Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/ver
 
 ### Blog
 
-- Blog editor (client)
-- Blog frontend (server component)
+- ✅ Blog editor (client)
+- ✅ Blog frontend (server component)
 
 ### Store
 
-- Product creation (physical and digital) (client-side)
-- Product - Stripe Linking
-- Product Variant creation
-- Draft and Live Product Variants
-- Store Checkout through Stripe
-- Tax & Shipping Estimates (included)
-- Cart with cookie storage
-- Order confirmation page
-- Product Search and filtering based upon Category
-- Automated Stripe Data Sync (1 way (Next -> Stripe), create, update, delete)
-- Address Validation
-- Phone Number collection on every order. Address only required on physical orders.
-- Automated Reciept Generation
-- UniqueRich Preview Cards for every Item in the store
+- ✅ Product creation (physical and digital) (client-side)
+- ✅ Product - Stripe Linking
+- ✅ Product Variant creation
+- ✅ Draft and Live Product Variants
+- ✅ Store Checkout through Stripe
+- ✅ Tax & Shipping Estimates (included)
+- ✅Cart with cookie persistant storage
+- ✅Order confirmation page
+- ✅Product Search and filtering based upon Category
+- ✅Automated Stripe Data Sync (1 way (Next -> Stripe), create, update, delete)
+- ✅Address Validation
+- ✅ Phone Number collection on every order. Address only required on physical orders.
+- ✅ Automated Reciept Generation
+- ✅UniqueRich Preview Cards for every Item in the store
+- ✅Auto-populate checkout information from user profile
+- ✅Checkout as guest or with account
+- ✅Uses Stripe Test keys in develotment for testing webhooks and payment completion data.
+- ✅7 day cookie storage for cart items
 
 #### Store - Coming Soon
 
 - Order Management & Fufillment (coming soon)
 - Discount Codes (coming soon)
 - Product Reviews (coming soon)
+- Cancelations (coming soon)
+- Refunds (coming soon)
+
+## User Accounts
+
+- ✅User information (name, email, phone, address)
+- ✅Name Parser
+- ✅Order History
 
 ## Subscriptions
 
-- Stripe Subscription (coming soon)
+- ✅ Stripe Subscription
+- Automated Subscription Creation (coming soon)
 - Subscription Management (coming soon)
 - Subscription Billing (coming soon)
 - Subscription Cancellation (coming soon)
@@ -116,5 +129,10 @@ Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/ver
 
 - Resume Builder (client) (Coming Soon)
 - Reciept Management (client) (Coming Soon)
+- ✅ Database Seeding (still in progress)
 
-# dynamic-web-template
+## Don't forget
+
+[ ] Even though items may be limited to 1, it still allows us to keep adding more by clicking the add to cart button. Same with items with limited stock. The quantity is locked but we can still keep clicking the add to cart button.
+[ ] Need to implement an inventory management system.
+[ ] Ability to cancel orders.

@@ -40,6 +40,10 @@ const config = {
         protocol: "https",
         hostname: "www.gardenzeus.com",
       },
+      {
+        protocol: "https",
+        hostname: "*.public.blob.vercel-storage.com",
+      },
     ],
   },
 };

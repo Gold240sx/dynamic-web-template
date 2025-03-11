@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { stripe } from "~/lib/stripe";
-import { env } from "~/env.js";
+import { stripe, webhookSecret } from "~/lib/stripe";
 import type Stripe from "stripe";
+import { db } from "~/server/db";
+import { orders } from "~/server/db/schema";
+import { eq } from "drizzle-orm";
 
 // AI DONT TOUCH THIS FILE
 
@@ -23,13 +25,27 @@ export async function POST(request: Request) {
     event = stripe.webhooks.constructEvent(
       body,
       signatureHeader,
-      env.STRIPE_WEBHOOK_SECRET,
+      webhookSecret,
     );
 
     // Handle specific event types
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object;
+        console.log("Received checkout.session.completed event:", session.id);
+
+        // Update order status to paid
+        if (session.id) {
+          console.log("Updating order status to paid for session:", session.id);
+          await db
+            .update(orders)
+            .set({
+              paymentStatus: "paid",
+              updatedAt: new Date(),
+            })
+            .where(eq(orders.stripeSessionId, session.id));
+          console.log("Successfully updated order status to paid");
+        }
 
         if (session.customer_email && session.payment_intent) {
           try {
@@ -58,11 +74,22 @@ export async function POST(request: Request) {
         break;
       }
 
-      case "payment_intent.payment_failed":
-        const failedPayment = event.data.object;
-        console.log(`Payment failed: ${failedPayment.id}`);
-        // Add your business logic here
+      case "payment_intent.payment_failed": {
+        const paymentIntent = event.data.object;
+
+        // Update order status to failed
+        if (paymentIntent.metadata.orderId) {
+          await db
+            .update(orders)
+            .set({
+              paymentStatus: "failed",
+              updatedAt: new Date(),
+            })
+            .where(eq(orders.id, paymentIntent.metadata.orderId));
+        }
+        console.log(`Payment failed: ${paymentIntent.id}`);
         break;
+      }
 
       case "charge.dispute.created":
         const dispute = event.data.object;

@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm/sqlite-core";
 import { createId } from "@paralleldrive/cuid2";
 import { type InferModel } from "drizzle-orm";
+import { relations } from "drizzle-orm";
 
 /**
  * This is an example of how to use the multi-project schema feature of Drizzle ORM. Use the same
@@ -197,6 +198,7 @@ export const orders = createTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => createId()),
+    userId: text("user_id").references(() => users.id),
     stripeSessionId: text("stripe_session_id").notNull().unique(),
     customerEmail: text("customer_email").notNull(),
     customerName: text("customer_name").notNull(),
@@ -246,5 +248,212 @@ export const orders = createTable(
     customerEmailIdx: index("orders_customer_email_idx").on(
       table.customerEmail,
     ),
+    userIdIdx: index("orders_user_id_idx").on(table.userId),
   }),
 );
+
+export const orderItems = createTable(
+  "order_items",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    orderId: text("order_id")
+      .notNull()
+      .references(() => orders.id, { onDelete: "cascade" }),
+    variantId: text("variant_id")
+      .notNull()
+      .references(() => productVariants.id),
+    quantity: integer("quantity").notNull(),
+    unitPrice: integer("unit_price").notNull(),
+    subtotal: integer("subtotal").notNull(),
+    name: text("name").notNull(),
+    variantName: text("variant_name").notNull(),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    orderIdIdx: index("order_items_order_id_idx").on(table.orderId),
+    variantIdIdx: index("order_items_variant_id_idx").on(table.variantId),
+  }),
+);
+
+export const users = createTable(
+  "users",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    email: text("email").notNull().unique(),
+    name: text("name").notNull(),
+    password: text("password"),
+    avatarUrl: text("avatar_url"),
+    billingAddress: text("billing_address", { mode: "json" }),
+    paymentMethod: text("payment_method", { mode: "json" }),
+    role: text("role", { enum: ["user", "admin"] })
+      .notNull()
+      .default("user"),
+    createdAt: int("created_at", { mode: "timestamp" })
+      .default(sql`(unixepoch())`)
+      .notNull(),
+    updatedAt: int("updated_at", { mode: "timestamp" }).$onUpdate(
+      () => new Date(),
+    ),
+  },
+  (table) => ({
+    emailIdx: index("users_email_idx").on(table.email),
+  }),
+);
+
+export const subscriptionProducts = createTable(
+  "subscription_products",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    name: text("name").notNull(),
+    description: text("description"),
+    active: int("active", { mode: "boolean" }).notNull().default(true),
+    image: text("image"),
+    metadata: text("metadata", { mode: "json" }),
+    createdAt: int("created_at", { mode: "timestamp" })
+      .default(sql`(unixepoch())`)
+      .notNull(),
+    updatedAt: int("updated_at", { mode: "timestamp" }).$onUpdate(
+      () => new Date(),
+    ),
+  },
+  (table) => ({
+    nameIdx: index("subscription_products_name_idx").on(table.name),
+  }),
+);
+
+export const subscriptionPrices = createTable(
+  "subscription_prices",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    productId: text("product_id")
+      .notNull()
+      .references(() => subscriptionProducts.id),
+    active: int("active", { mode: "boolean" }).notNull().default(true),
+    currency: text("currency").notNull().default("usd"),
+    interval: text("interval", {
+      enum: ["day", "week", "month", "year"],
+    }).notNull(),
+    intervalCount: int("interval_count").notNull().default(1),
+    trialPeriodDays: int("trial_period_days"),
+    type: text("type", {
+      enum: ["one_time", "recurring"],
+    }).notNull(),
+    unitAmount: int("unit_amount").notNull(),
+    createdAt: int("created_at", { mode: "timestamp" })
+      .default(sql`(unixepoch())`)
+      .notNull(),
+    updatedAt: int("updated_at", { mode: "timestamp" }).$onUpdate(
+      () => new Date(),
+    ),
+  },
+  (table) => ({
+    productIdx: index("subscription_prices_product_idx").on(table.productId),
+  }),
+);
+
+export const subscriptions = createTable(
+  "subscriptions",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    priceId: text("price_id")
+      .notNull()
+      .references(() => subscriptionPrices.id),
+    status: text("status", {
+      enum: [
+        "trialing",
+        "active",
+        "canceled",
+        "incomplete",
+        "incomplete_expired",
+        "past_due",
+        "unpaid",
+        "paused",
+      ],
+    }).notNull(),
+    metadata: text("metadata", { mode: "json" }),
+    cancelAt: int("cancel_at", { mode: "timestamp" }),
+    cancelAtPeriodEnd: int("cancel_at_period_end", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    canceledAt: int("canceled_at", { mode: "timestamp" }),
+    currentPeriodStart: int("current_period_start", {
+      mode: "timestamp",
+    }).notNull(),
+    currentPeriodEnd: int("current_period_end", {
+      mode: "timestamp",
+    }).notNull(),
+    endedAt: int("ended_at", { mode: "timestamp" }),
+    trialStart: int("trial_start", { mode: "timestamp" }),
+    trialEnd: int("trial_end", { mode: "timestamp" }),
+    createdAt: int("created_at", { mode: "timestamp" })
+      .default(sql`(unixepoch())`)
+      .notNull(),
+  },
+  (table) => ({
+    userIdx: index("subscriptions_user_idx").on(table.userId),
+    priceIdx: index("subscriptions_price_idx").on(table.priceId),
+    statusIdx: index("subscriptions_status_idx").on(table.status),
+  }),
+);
+
+export const subscriptionProductsRelations = relations(
+  subscriptionProducts,
+  ({ many }) => ({
+    prices: many(subscriptionPrices),
+  }),
+);
+
+export const subscriptionPricesRelations = relations(
+  subscriptionPrices,
+  ({ one }) => ({
+    product: one(subscriptionProducts, {
+      fields: [subscriptionPrices.productId],
+      references: [subscriptionProducts.id],
+    }),
+  }),
+);
+
+export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
+  price: one(subscriptionPrices, {
+    fields: [subscriptions.priceId],
+    references: [subscriptionPrices.id],
+  }),
+}));
+
+export const ordersRelations = relations(orders, ({ many, one }) => ({
+  items: many(orderItems),
+  user: one(users, {
+    fields: [orders.userId],
+    references: [users.id],
+  }),
+}));
+
+export const orderItemsRelations = relations(orderItems, ({ one }) => ({
+  order: one(orders, {
+    fields: [orderItems.orderId],
+    references: [orders.id],
+  }),
+  variant: one(productVariants, {
+    fields: [orderItems.variantId],
+    references: [productVariants.id],
+  }),
+}));
+
+export const usersRelations = relations(users, ({ many }) => ({
+  orders: many(orders),
+}));

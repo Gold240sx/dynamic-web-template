@@ -103,6 +103,86 @@ async function main() {
     );
     
     CREATE INDEX IF NOT EXISTS "site_settings_id_idx" ON "server-client-t3-blog_site_settings" ("id");
+
+    CREATE TABLE IF NOT EXISTS "server-client-t3-blog_users" (
+      "id" TEXT PRIMARY KEY,
+      "email" TEXT NOT NULL,
+      "name" TEXT,
+      "password" TEXT,
+      "role" TEXT NOT NULL DEFAULT 'user',
+      "created_at" INTEGER NOT NULL DEFAULT (unixepoch()),
+      "updated_at" INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS "server-client-t3-blog_subscription_products" (
+      "id" TEXT PRIMARY KEY,
+      "name" TEXT NOT NULL,
+      "description" TEXT,
+      "active" INTEGER NOT NULL DEFAULT 1,
+      "image" TEXT,
+      "created_at" INTEGER NOT NULL DEFAULT (unixepoch()),
+      "updated_at" INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS "server-client-t3-blog_subscription_prices" (
+      "id" TEXT PRIMARY KEY,
+      "product_id" TEXT NOT NULL,
+      "active" INTEGER NOT NULL DEFAULT 1,
+      "currency" TEXT NOT NULL DEFAULT 'usd',
+      "interval" TEXT NOT NULL,
+      "interval_count" INTEGER NOT NULL DEFAULT 1,
+      "trial_period_days" INTEGER,
+      "type" TEXT NOT NULL,
+      "unit_amount" INTEGER NOT NULL,
+      "created_at" INTEGER NOT NULL DEFAULT (unixepoch()),
+      "updated_at" INTEGER,
+      FOREIGN KEY ("product_id") REFERENCES "server-client-t3-blog_subscription_products" ("id")
+    );
+
+    CREATE TABLE IF NOT EXISTS "server-client-t3-blog_orders" (
+      "id" TEXT PRIMARY KEY,
+      "user_id" TEXT,
+      "stripe_session_id" TEXT,
+      "customer_email" TEXT NOT NULL,
+      "customer_name" TEXT,
+      "customer_phone" TEXT,
+      "requires_shipping" INTEGER NOT NULL DEFAULT 0,
+      "shipping_name" TEXT,
+      "shipping_address_line1" TEXT,
+      "shipping_address_line2" TEXT,
+      "shipping_city" TEXT,
+      "shipping_state" TEXT,
+      "shipping_postal_code" TEXT,
+      "shipping_country" TEXT,
+      "billing_address_line1" TEXT,
+      "billing_address_line2" TEXT,
+      "billing_city" TEXT,
+      "billing_state" TEXT,
+      "billing_postal_code" TEXT,
+      "billing_country" TEXT,
+      "currency" TEXT NOT NULL DEFAULT 'usd',
+      "amount_subtotal" REAL NOT NULL,
+      "amount_total" REAL NOT NULL,
+      "amount_tax" REAL,
+      "amount_shipping" REAL,
+      "payment_status" TEXT NOT NULL DEFAULT 'pending',
+      "shipping_status" TEXT NOT NULL DEFAULT 'pending',
+      "created_at" INTEGER NOT NULL DEFAULT (unixepoch()),
+      "updated_at" INTEGER,
+      FOREIGN KEY ("user_id") REFERENCES "server-client-t3-blog_users" ("id")
+    );
+
+    CREATE TABLE IF NOT EXISTS "server-client-t3-blog_order_items" (
+      "id" TEXT PRIMARY KEY,
+      "order_id" TEXT NOT NULL,
+      "variant_id" TEXT NOT NULL,
+      "quantity" INTEGER NOT NULL,
+      "price" REAL NOT NULL,
+      "created_at" INTEGER NOT NULL DEFAULT (unixepoch()),
+      "updated_at" INTEGER,
+      FOREIGN KEY ("order_id") REFERENCES "server-client-t3-blog_orders" ("id"),
+      FOREIGN KEY ("variant_id") REFERENCES "server-client-t3-blog_product_variants" ("id")
+    );
   `);
 
   console.log("Database initialized successfully!");

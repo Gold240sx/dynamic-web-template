@@ -97,7 +97,7 @@ export const TopBar: FC<TopBarProps> = ({
   };
 
   return (
-    <div className="sticky top-0 z-40 w-full border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="sticky top-0 z-40 w-full border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 print:!hidden">
       <div className="flex h-12 items-center justify-between px-4">
         <Link
           href="/shop"

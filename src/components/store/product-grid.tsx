@@ -39,7 +39,7 @@ export function ProductGrid({ products }: ProductGridProps) {
             key={product.id}
             className="group relative rounded-lg border bg-white p-4 transition-shadow hover:shadow-lg dark:bg-zinc-800"
           >
-            <Link href={`/store/${product.id}`} className="block">
+            <Link href={`/shop/${product.id}`} className="block">
               <div className="relative aspect-square overflow-hidden rounded-lg">
                 {firstLiveVariant?.images[0] ? (
                   <Image
@@ -65,7 +65,7 @@ export function ProductGrid({ products }: ProductGridProps) {
               </div>
             </Link>
             {liveVariants.length > 1 ? (
-              <Link href={`/store/${product.id}`}>
+              <Link href={`/shop/${product.id}`}>
                 <button className="mt-4 w-full rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200">
                   See {liveVariants.length} Options
                 </button>

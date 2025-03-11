@@ -3,8 +3,8 @@
 import { TopBar } from "~/components/myComponents/top-bar";
 import { CartDrawer } from "~/components/myComponents/cart-drawer";
 import { useStore } from "~/context/store-context";
-import { useState, useCallback } from "react";
-import { usePathname } from "next/navigation";
+import { useState, useCallback, useEffect } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useQueryState } from "nuqs";
 
 interface StoreHeaderProps {
@@ -19,10 +19,22 @@ export function StoreHeader({
   selectedCategory = "all",
 }: StoreHeaderProps) {
   const store = useStore();
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useQueryState("cartOpen", {
+    defaultValue: false,
+    parse: (value) => value === "true",
+  });
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [category, setCategory] = useQueryState("category");
   const isStoreRoute = pathname === "/shop" || pathname === "/dashboard/store";
+
+  // Check for cartOpen parameter on mount
+  useEffect(() => {
+    const cartOpen = searchParams.get("cartOpen");
+    if (cartOpen === "true") {
+      void setIsOpen(true);
+    }
+  }, [searchParams, setIsOpen]);
 
   const handleSearch = useCallback(
     (query: string) => {
@@ -49,7 +61,7 @@ export function StoreHeader({
     <>
       <TopBar
         cartItemCount={cartCount}
-        onCartClick={() => setIsOpen(true)}
+        onCartClick={() => void setIsOpen(true)}
         onSearch={isStoreRoute ? handleSearch : undefined}
         onCategoryChange={isStoreRoute ? handleCategoryChange : undefined}
         selectedCategory={category ?? "all"}
@@ -58,7 +70,7 @@ export function StoreHeader({
       {isOpen && (
         <CartDrawer
           cart={cart}
-          onClose={() => setIsOpen(false)}
+          onClose={() => void setIsOpen(false)}
           onRemoveFromCart={removeFromCart}
           onUpdateQuantity={updateQuantity}
         />

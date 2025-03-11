@@ -1,42 +1,105 @@
 import { z } from "zod";
+import { desc, eq, like, or } from "drizzle-orm";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { orders } from "~/server/db/schema";
-import { desc, eq, like } from "drizzle-orm";
+import { orders, orderItems, users } from "~/server/db/schema";
+import type { inferRouterInputs, inferRouterOutputs } from "@trpc/server";
+
+const searchInput = z.object({
+  search: z.string().optional(),
+  paymentStatus: z.string().optional(),
+  shippingStatus: z.string().optional(),
+});
+
+const idInput = z.object({ id: z.string() });
+const userIdInput = z.object({ userId: z.string() });
+
+type SearchInput = z.infer<typeof searchInput>;
+type IdInput = z.infer<typeof idInput>;
+type UserIdInput = z.infer<typeof userIdInput>;
 
 export const orderRouter = createTRPCRouter({
-  getAll: publicProcedure
-    .input(
-      z.object({
-        query: z.string().optional(),
-        limit: z.number().min(1).max(100).default(50),
-        offset: z.number().min(0).default(0),
-      }),
-    )
+  getAll: publicProcedure.input(searchInput).query(async ({ ctx, input }) => {
+    const { search, paymentStatus, shippingStatus } = input;
+    const conditions = [];
+
+    if (search) {
+      conditions.push(
+        like(orders.customerName, `%${search}%`),
+        like(orders.customerEmail, `%${search}%`),
+        like(orders.id, `%${search}%`),
+      );
+    }
+
+    if (paymentStatus && paymentStatus !== "all") {
+      conditions.push(eq(orders.paymentStatus, paymentStatus));
+    }
+
+    if (shippingStatus && shippingStatus !== "all") {
+      conditions.push(eq(orders.shippingStatus, shippingStatus));
+    }
+
+    return ctx.db.query.orders.findMany({
+      where: conditions.length > 0 ? or(...conditions) : undefined,
+      orderBy: [desc(orders.createdAt)],
+      with: {
+        items: true,
+      },
+    });
+  }),
+
+  getById: publicProcedure.input(idInput).query(async ({ ctx, input }) => {
+    return ctx.db.query.orders.findFirst({
+      where: eq(orders.id, input.id),
+      with: {
+        items: true,
+      },
+    });
+  }),
+
+  getByUserId: publicProcedure
+    .input(userIdInput)
     .query(async ({ ctx, input }) => {
-      const { query, limit, offset } = input;
+      // Get user's email first
+      const user = await ctx.db.query.users.findFirst({
+        where: eq(users.id, input.userId),
+        columns: { email: true },
+      });
 
-      const baseQuery = ctx.db
-        .select()
-        .from(orders)
-        .orderBy(desc(orders.createdAt))
-        .limit(limit)
-        .offset(offset);
-
-      if (query) {
-        return baseQuery.where(like(orders.customerEmail, `%${query}%`));
+      if (!user) {
+        return [];
       }
 
-      return baseQuery;
+      // Get orders where userId matches OR email matches
+      return ctx.db.query.orders.findMany({
+        where: or(
+          eq(orders.userId, input.userId),
+          eq(orders.customerEmail, user.email),
+        ),
+        orderBy: [desc(orders.createdAt)],
+        with: {
+          items: true,
+        },
+      });
     }),
 
-  getById: publicProcedure
-    .input(z.object({ id: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const order = await ctx.db
-        .select()
-        .from(orders)
-        .where(eq(orders.id, input.id));
+  updateShippingStatus: publicProcedure
+    .input(
+      z.object({
+        orderId: z.string(),
+        status: z.enum(["pending", "shipped", "delivered"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [updatedOrder] = await ctx.db
+        .update(orders)
+        .set({ shippingStatus: input.status })
+        .where(eq(orders.id, input.orderId))
+        .returning();
 
-      return order[0];
+      return updatedOrder;
     }),
 });
+
+export type OrderRouter = typeof orderRouter;
+export type OrderRouterInputs = inferRouterInputs<OrderRouter>;
+export type OrderRouterOutputs = inferRouterOutputs<OrderRouter>;

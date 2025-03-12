@@ -42,23 +42,35 @@ export function SubscriptionProductForm({
   productId,
 }: SubscriptionProductFormProps) {
   const router = useRouter();
+
+  // Convert initial cents to dollars for the form
+  const defaultValues: SubscriptionProduct = initialData
+    ? {
+        ...initialData,
+        prices: initialData.prices.map((price) => ({
+          ...price,
+          unitAmount: price.unitAmount / 100,
+        })),
+      }
+    : {
+        name: "",
+        description: "",
+        active: true,
+        prices: [
+          {
+            active: true,
+            currency: "usd",
+            interval: "month",
+            intervalCount: 1,
+            type: "recurring",
+            unitAmount: 0,
+          },
+        ],
+      };
+
   const form = useForm<SubscriptionProduct>({
     resolver: zodResolver(subscriptionProductSchema),
-    defaultValues: initialData ?? {
-      name: "",
-      description: "",
-      active: true,
-      prices: [
-        {
-          active: true,
-          currency: "usd",
-          interval: "month",
-          intervalCount: 1,
-          type: "recurring",
-          unitAmount: 0,
-        },
-      ],
-    },
+    defaultValues,
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -70,11 +82,12 @@ export function SubscriptionProductForm({
     api.subscription.createProduct.useMutation({
       onSuccess: () => {
         toast.success("Product created successfully");
-        router.push("/dashboard/subscriptions");
-        router.refresh();
+        // Force a hard navigation
+        window.location.href = "/dashboard/subscriptions";
       },
       onError: (error) => {
-        toast.error(error.message);
+        console.error("Error creating product:", error);
+        toast.error(`Error creating product: ${error.message}`);
       },
     });
 
@@ -82,27 +95,63 @@ export function SubscriptionProductForm({
     api.subscription.updateProduct.useMutation({
       onSuccess: () => {
         toast.success("Product updated successfully");
-        router.push("/dashboard/subscriptions");
-        router.refresh();
+        // Force a hard navigation
+        window.location.href = "/dashboard/subscriptions";
       },
       onError: (error) => {
-        toast.error(error.message);
+        console.error("Error updating product:", error);
+        toast.error(`Error updating product: ${error.message}`);
       },
     });
 
   const isLoading = isCreating || isUpdating;
 
-  function onSubmit(data: SubscriptionProduct) {
-    if (productId) {
-      updateProduct({ id: productId, ...data });
-    } else {
-      createProduct(data);
+  async function onSubmit(data: SubscriptionProduct) {
+    try {
+      console.log("onSubmit function called with data:", data);
+
+      // Convert dollar amounts to cents before submitting
+      const formattedData = {
+        ...data,
+        prices: data.prices.map((price) => ({
+          ...price,
+          unitAmount: Math.round(price.unitAmount * 100),
+        })),
+      };
+
+      console.log("Formatted data (after cents conversion):", formattedData);
+
+      if (productId) {
+        console.log("Updating product with ID:", productId);
+        console.log("Update payload:", { id: productId, ...formattedData });
+        updateProduct({ id: productId, ...formattedData });
+      } else {
+        console.log("Creating new product with data:", formattedData);
+        createProduct(formattedData);
+      }
+    } catch (error) {
+      console.error("Error in form submission:", error);
+      toast.error("An unexpected error occurred");
     }
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          console.log("Form submit event triggered");
+          console.log("Current form values:", form.getValues());
+
+          // Handle submission directly
+          const formData = form.getValues();
+          console.log("Form data before submission:", formData);
+          onSubmit(formData).catch((error) => {
+            console.error("Form submission error:", error);
+          });
+        }}
+        className="space-y-8"
+      >
         <FormField
           control={form.control}
           name="name"
@@ -207,18 +256,22 @@ export function SubscriptionProductForm({
                       name={`prices.${index}.unitAmount`}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Amount (in cents)</FormLabel>
+                          <FormLabel>Amount (in dollars)</FormLabel>
                           <FormControl>
                             <Input
                               type="number"
                               min={0}
-                              placeholder="999"
+                              step="0.01"
+                              placeholder="9.99"
                               {...field}
                               onChange={(e) =>
                                 field.onChange(Number(e.target.value))
                               }
                             />
                           </FormControl>
+                          <FormDescription>
+                            Enter the price in dollars (e.g., 9.99)
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -341,13 +394,11 @@ export function SubscriptionProductForm({
           ))}
         </div>
 
-        <Button type="submit" disabled={isLoading}>
-          {isLoading
-            ? "Saving..."
-            : productId
-              ? "Update Product"
-              : "Create Product"}
-        </Button>
+        <div className="flex justify-end">
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? "Saving..." : "Save Changes"}
+          </Button>
+        </div>
       </form>
     </Form>
   );

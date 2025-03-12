@@ -6,19 +6,11 @@ import { cn } from "~/lib/utils";
 import { useAuth } from "~/hooks/use-auth";
 import { Button } from "~/components/ui/button";
 import { UserNav } from "./myComponents/user-nav";
-import { api } from "~/trpc/react";
-import { NotificationBadge } from "./ui/notification-badge";
 
 export function Navigation() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const { data: notifications } = api.notifications.getUnviewedCounts.useQuery(
-    undefined,
-    {
-      refetchInterval: 30000, // Refetch every 30 seconds
-      enabled: !!user, // Only run query when user is authenticated
-    },
-  );
+  const isAdmin = user ? user.role === "admin" : false;
 
   const links = [
     { href: "/", label: "Home" },
@@ -28,7 +20,6 @@ export function Navigation() {
     {
       href: "/dashboard",
       label: "Dashboard",
-      showBadge: user?.role === "admin" && (notifications?.total ?? 0) > 0,
     },
   ];
 
@@ -52,9 +43,6 @@ export function Navigation() {
               >
                 {link.label}
               </Link>
-              {link.showBadge && (
-                <NotificationBadge count={notifications?.total} />
-              )}
             </div>
           ))}
           <div className="flex items-center space-x-4">

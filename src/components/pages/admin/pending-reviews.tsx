@@ -26,6 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { RouterOutputs } from "~/trpc/shared";
+import { useAuth } from "~/hooks/use-auth";
 
 type CommentModalData = {
   id: string;
@@ -66,18 +67,32 @@ export function PendingReviews() {
     useState<CommentModalData>(null);
   const router = useRouter();
   const utils = api.useUtils();
+  const { user } = useAuth();
+  const enabled = user ? user.role === "admin" : false;
 
-  const { data: pendingComments = [] } = api.post.getPendingComments.useQuery();
-  const { data: pendingProductReviews } =
-    api.productReview.getPending.useQuery();
-  const { data: pendingCompanyReviews } =
-    api.companyReview.getPending.useQuery();
+  const { data: pendingComments = [] } = api.post.getPendingComments.useQuery(
+    undefined,
+    {
+      enabled,
+    },
+  );
+  const { data: pendingProductReviews } = api.productReview.getPending.useQuery(
+    undefined,
+    {
+      enabled,
+    },
+  );
+  const { data: pendingCompanyReviews } = api.companyReview.getPending.useQuery(
+    undefined,
+    {
+      enabled,
+    },
+  );
 
   const { mutate: updateComment } = api.post.updateComment.useMutation({
     onSuccess: () => {
       toast.success("Comment updated successfully");
       void utils.post.getPendingComments.invalidate();
-      void utils.notifications.getUnviewedCounts.invalidate();
     },
   });
 
@@ -87,7 +102,6 @@ export function PendingReviews() {
         router.refresh();
       });
       toast.success("Product review updated");
-      void utils.notifications.getUnviewedCounts.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);
@@ -100,7 +114,6 @@ export function PendingReviews() {
         router.refresh();
       });
       toast.success("Company review updated");
-      void utils.notifications.getUnviewedCounts.invalidate();
     },
     onError: (error) => {
       toast.error(error.message);
@@ -109,7 +122,7 @@ export function PendingReviews() {
 
   const { mutate: markAsViewed } = api.notifications.markAsViewed.useMutation({
     onSuccess: () => {
-      void utils.notifications.getUnviewedCounts.invalidate();
+      // No need to invalidate notifications anymore
     },
   });
 
@@ -156,16 +169,16 @@ export function PendingReviews() {
                   <div className="font-semibold">
                     {selectedComment.userName}
                   </div>
-                  <div className="text-muted-foreground text-sm">
+                  <div className="text-sm text-muted-foreground">
                     {format(new Date(selectedComment.createdAt), "PPpp")}
                   </div>
                 </div>
               </div>
               <div>
-                <div className="text-muted-foreground text-sm font-medium">
+                <div className="text-sm font-medium text-muted-foreground">
                   Post: {selectedComment.postTitle}
                 </div>
-                <div className="bg-muted mt-2 whitespace-pre-wrap rounded-lg p-4">
+                <div className="mt-2 whitespace-pre-wrap rounded-lg bg-muted p-4">
                   {selectedComment.content}
                 </div>
               </div>
@@ -223,7 +236,7 @@ export function PendingReviews() {
                 {pendingComments.map((comment) => (
                   <TableRow
                     key={comment.id}
-                    className="hover:bg-muted/50 cursor-pointer"
+                    className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleCommentClick(comment)}
                   >
                     <TableCell>{comment.post.title}</TableCell>
@@ -316,13 +329,13 @@ export function PendingReviews() {
                           />
                         ))}
                       </div>
-                      <span className="text-muted-foreground text-sm">
+                      <span className="text-sm text-muted-foreground">
                         {formatDistanceToNow(new Date(review.createdAt), {
                           addSuffix: true,
                         })}
                       </span>
                     </div>
-                    <p className="text-muted-foreground mt-1">
+                    <p className="mt-1 text-muted-foreground">
                       {review.content}
                     </p>
                   </div>
@@ -382,13 +395,13 @@ export function PendingReviews() {
                           />
                         ))}
                       </div>
-                      <span className="text-muted-foreground text-sm">
+                      <span className="text-sm text-muted-foreground">
                         {formatDistanceToNow(new Date(review.createdAt), {
                           addSuffix: true,
                         })}
                       </span>
                     </div>
-                    <p className="text-muted-foreground mt-1">
+                    <p className="mt-1 text-muted-foreground">
                       {review.content}
                     </p>
                   </div>

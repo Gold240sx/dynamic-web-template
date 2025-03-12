@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
+import {
+  createTRPCRouter,
+  protectedProcedure,
+  publicProcedure,
+} from "~/server/api/trpc";
 import { subscriptionProducts, subscriptionPrices } from "~/server/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
@@ -9,7 +13,7 @@ const priceSchema = z.object({
   currency: z.string().default("usd"),
   interval: z.enum(["day", "week", "month", "year"]),
   intervalCount: z.number().default(1),
-  trialPeriodDays: z.number().optional(),
+  trialPeriodDays: z.number().nullable().optional(),
   type: z.enum(["one_time", "recurring"]),
   unitAmount: z.number(),
 });
@@ -19,12 +23,12 @@ const productSchema = z.object({
   description: z.string().optional(),
   active: z.boolean().default(true),
   image: z.string().url().optional(),
-  metadata: z.record(z.string()).optional(),
+  metadata: z.record(z.string()).nullable().optional(),
   prices: z.array(priceSchema),
 });
 
 export const subscriptionRouter = createTRPCRouter({
-  getAllProducts: protectedProcedure.query(async ({ ctx }) => {
+  getAllProducts: publicProcedure.query(async ({ ctx }) => {
     const products = await ctx.db.query.subscriptionProducts.findMany({
       with: {
         prices: true,
@@ -35,7 +39,7 @@ export const subscriptionRouter = createTRPCRouter({
     return products;
   }),
 
-  getProduct: protectedProcedure
+  getProduct: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const product = await ctx.db.query.subscriptionProducts.findFirst({
@@ -55,7 +59,7 @@ export const subscriptionRouter = createTRPCRouter({
       return product;
     }),
 
-  createProduct: protectedProcedure
+  createProduct: publicProcedure
     .input(productSchema)
     .mutation(async ({ ctx, input }) => {
       const [createdProduct] = await ctx.db

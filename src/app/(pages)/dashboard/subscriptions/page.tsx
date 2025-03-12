@@ -48,7 +48,9 @@ export default function SubscriptionsPage() {
                   <TableHead>Name</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Prices</TableHead>
+                  <TableHead className="min-w-[160px] text-center">
+                    Prices
+                  </TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -68,10 +70,10 @@ export default function SubscriptionsPage() {
                         {product.active ? "Active" : "Inactive"}
                       </span>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       {product.prices?.map((price) => (
                         <div key={price.id} className="mb-1">
-                          {formatCurrency(price.unitAmount / 100)} /{" "}
+                          {formatCurrency(price.unitAmount)} /{" "}
                           {price.intervalCount} {price.interval}
                           {price.intervalCount > 1 ? "s" : ""}
                         </div>

@@ -17,6 +17,7 @@ import { Suspense } from "react";
 import { api } from "~/trpc/react";
 import { NotificationBadge } from "~/components/ui/notification-badge";
 import { useAuth } from "~/hooks/use-auth";
+import { Navigation } from "~/components/navigation";
 
 const navigation = [
   {
@@ -73,83 +74,77 @@ const approvalNavigation = [
 function DashboardNav() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const { data: notifications } = api.notifications.getUnviewedCounts.useQuery(
-    undefined,
-    {
-      refetchInterval: 30000, // Refetch every 30 seconds
-      enabled: !!user, // Only run query when user is authenticated
-    },
-  );
 
   const getBadgeCount = (type: "comments" | "reviews" | "orders") => {
-    if (!notifications) return 0;
-    return notifications[type];
+    return 0;
   };
 
   return (
-    <nav className="space-y-1 px-3 py-2">
-      {navigation.map((item) => {
-        const isActive =
-          pathname === item.href || pathname.startsWith(item.href + "/");
-        return (
-          <div key={item.name} className="relative">
-            <Link
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-base transition-colors",
-                isActive
-                  ? "bg-zinc-800"
-                  : "hover: text-zinc-400 hover:bg-zinc-800",
-              )}
-            >
-              <span className="relative inline-block pr-2">
-                <item.icon className="h-6 w-6" />
-                {item.showBadge && (
-                  <NotificationBadge
-                    count={getBadgeCount(
-                      item.badgeType as "comments" | "reviews" | "orders",
-                    )}
-                  />
+    <div className="">
+      <nav className="space-y-1 px-3 py-2">
+        {navigation.map((item) => {
+          const isActive =
+            pathname === item.href || pathname.startsWith(item.href + "/");
+          return (
+            <div key={item.name} className="relative">
+              <Link
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-base transition-colors",
+                  isActive
+                    ? "bg-zinc-800"
+                    : "hover: text-zinc-400 hover:bg-zinc-800",
                 )}
-              </span>
-              {item.name}
-            </Link>
-          </div>
-        );
-      })}
+              >
+                <span className="relative inline-block pr-2">
+                  <item.icon className="h-6 w-6" />
+                  {item.showBadge && (
+                    <NotificationBadge
+                      count={getBadgeCount(
+                        item.badgeType as "comments" | "reviews" | "orders",
+                      )}
+                    />
+                  )}
+                </span>
+                {item.name}
+              </Link>
+            </div>
+          );
+        })}
 
-      <div className="my-4 border-t border-zinc-800" />
+        <div className="my-4 border-t border-zinc-800" />
 
-      {approvalNavigation.map((item) => {
-        const isActive =
-          pathname === item.href || pathname.startsWith(item.href + "/");
-        return (
-          <div key={item.name} className="relative">
-            <Link
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-base transition-colors",
-                isActive
-                  ? "bg-zinc-800"
-                  : "hover: text-zinc-400 hover:bg-zinc-800",
-              )}
-            >
-              <span className="relative inline-block">
-                <item.icon className="h-6 w-6" />
-                {item.showBadge && (
-                  <NotificationBadge
-                    count={getBadgeCount(
-                      item.badgeType as "comments" | "reviews" | "orders",
-                    )}
-                  />
+        {approvalNavigation.map((item) => {
+          const isActive =
+            pathname === item.href || pathname.startsWith(item.href + "/");
+          return (
+            <div key={item.name} className="relative">
+              <Link
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-base transition-colors",
+                  isActive
+                    ? "bg-zinc-800"
+                    : "hover: text-zinc-400 hover:bg-zinc-800",
                 )}
-              </span>
-              {item.name}
-            </Link>
-          </div>
-        );
-      })}
-    </nav>
+              >
+                <span className="relative inline-block">
+                  <item.icon className="h-6 w-6" />
+                  {item.showBadge && (
+                    <NotificationBadge
+                      count={getBadgeCount(
+                        item.badgeType as "comments" | "reviews" | "orders",
+                      )}
+                    />
+                  )}
+                </span>
+                {item.name}
+              </Link>
+            </div>
+          );
+        })}
+      </nav>
+    </div>
   );
 }
 
@@ -159,23 +154,26 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen">
-      {/* Sidebar */}
-      <div id="sidebar" className="w-64 bg-zinc-900 print:!hidden">
-        <div className="flex h-16 items-center px-6">
-          <Link href="/dashboard" className="text-lg font-semibold">
-            Dashboard
-          </Link>
+    <>
+      <Navigation />
+      <div className="flex min-h-screen">
+        {/* Sidebar */}
+        <div id="sidebar" className="w-64 bg-zinc-900 print:!hidden">
+          <div className="flex h-16 items-center px-6">
+            <Link href="/dashboard" className="text-lg font-semibold">
+              Dashboard
+            </Link>
+          </div>
+          <Suspense fallback={<div className="px-3 py-2">Loading...</div>}>
+            <DashboardNav />
+          </Suspense>
         </div>
-        <Suspense fallback={<div className="px-3 py-2">Loading...</div>}>
-          <DashboardNav />
-        </Suspense>
-      </div>
 
-      {/* Main content */}
-      <div className="flex-1 border-none print:m-0 print:w-full">
-        {children}
+        {/* Main content */}
+        <div className="flex-1 border-none print:m-0 print:w-full">
+          {children}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

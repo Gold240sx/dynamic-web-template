@@ -3,13 +3,19 @@ import { SubscriptionProductFormWrapper } from "./form.client";
 import { createCaller } from "~/server/api/root";
 import { createTRPCContext } from "~/server/api/trpc";
 
-export default async function Page(props: any) {
-  const { productId } = props.params;
+interface PageProps {
+  params: {
+    productId: string;
+  };
+}
 
+export default async function Page({ params }: PageProps) {
   const caller = createCaller(
     await createTRPCContext({ headers: new Headers() }),
   );
-  const product = await caller.subscription.getProduct({ id: productId });
+  const product = await caller.subscription.getProduct({
+    id: params.productId,
+  });
 
   if (!product) {
     notFound();

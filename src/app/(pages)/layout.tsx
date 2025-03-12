@@ -30,7 +30,6 @@ export default function RootLayout({
         <TRPCReactProvider>
           <StoreProvider>
             <Providers>
-              <Navigation />
               <NuqsAdapter>{children}</NuqsAdapter>
               <Toaster />
             </Providers>

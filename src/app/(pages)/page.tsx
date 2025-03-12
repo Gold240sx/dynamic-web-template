@@ -10,25 +10,11 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function HomePage() {
-  const [products, subscription, user] = (await Promise.all([
-    api.subscription.getProducts(),
-    api.subscription.getAll(),
-    api.user.getAll(),
-  ])) as [
-    SubscriptionProductWithPrices[],
-    (
-      | (InferSelectModel<typeof subscriptions> & {
-          price?: {
-            productId: string;
-          } | null;
-        })
-      | null
-    ),
-    InferSelectModel<typeof users> | null,
-  ];
+  const products =
+    (await api.subscription.getAllProducts()) as SubscriptionProductWithPrices[];
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c]">
       <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
         <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
           <span className="text-[hsl(280,100%,70%)]">T3 MEGA</span> App
@@ -57,11 +43,7 @@ export default async function HomePage() {
             </div>
           </Link>
         </div>
-        <Pricing
-          products={products ?? []}
-          subscription={subscription ?? null}
-          user={user ?? null}
-        />
+        <Pricing products={products} subscription={null} user={null} />
         <ReviewsSection />
       </div>
     </main>

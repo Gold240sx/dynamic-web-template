@@ -79,7 +79,7 @@ export function ProductModal({
             </div>
             <button
               onClick={() => onAddToCart(product)}
-              className="mt-3 w-full rounded-md bg-zinc-900 py-2 text-xs font-medium text-white transition-colors hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+              className="mt-3 w-full rounded-md bg-zinc-900 py-2 text-xs font-medium transition-colors hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
             >
               Add to Cart
             </button>

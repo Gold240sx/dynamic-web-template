@@ -35,14 +35,14 @@ export default async function BlogPostPage({
       <nav className="mb-8 flex items-center gap-x-4">
         <Link
           href="/"
-          className="text-muted-foreground hover:text-foreground text-sm"
+          className="text-sm text-muted-foreground hover:text-foreground"
         >
           Home
         </Link>
         <span className="text-muted-foreground">/</span>
         <Link
           href="/blog"
-          className="text-muted-foreground hover:text-foreground text-sm"
+          className="text-sm text-muted-foreground hover:text-foreground"
         >
           Blog
         </Link>
@@ -76,7 +76,7 @@ export default async function BlogPostPage({
               <BlogShareButton title={post.title} excerpt={post.excerpt} />
             </div>
           </div>
-          <div className="text-muted-foreground flex items-center gap-x-4 text-sm">
+          <div className="flex items-center gap-x-4 text-sm text-muted-foreground">
             <time dateTime={post.createdAt.toISOString()}>
               {formatDate(post.createdAt)}
             </time>

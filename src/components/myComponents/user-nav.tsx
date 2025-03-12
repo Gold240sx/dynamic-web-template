@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -44,6 +44,12 @@ export function UserNav() {
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium">{user.name ?? user.email}</p>
             <p className="text-muted-foreground text-xs">{user.email}</p>
+            {user.status === "suspended" && (
+              <div className="flex items-center gap-1 text-xs text-red-500">
+                <AlertCircle className="h-3 w-3" />
+                <span>Account Suspended</span>
+              </div>
+            )}
           </div>
         </div>
         <DropdownMenuSeparator />

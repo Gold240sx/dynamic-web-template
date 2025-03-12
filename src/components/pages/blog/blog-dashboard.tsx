@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQueryState } from "nuqs";
-import { Plus, Pencil, Trash2, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, Pin, Star } from "lucide-react";
 import { format } from "date-fns";
 
 import { api } from "~/trpc/react";
@@ -17,6 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
+import { toast } from "sonner";
 
 export default function BlogDashboardContent() {
   const [mode, setMode] = useQueryState("mode", {
@@ -32,10 +33,24 @@ export default function BlogDashboardContent() {
     { id: previewPost! },
     { enabled: previewPost !== null },
   );
+
   const { mutate: deletePost } = api.post.delete.useMutation({
     onSuccess: () => {
-      // Invalidate and refetch
       void utils.post.getAllPosts.invalidate();
+    },
+  });
+
+  const { mutate: togglePin } = api.post.togglePin.useMutation({
+    onSuccess: () => {
+      void utils.post.getAllPosts.invalidate();
+      toast.success("Pin status updated");
+    },
+  });
+
+  const { mutate: toggleFavorite } = api.post.toggleFavorite.useMutation({
+    onSuccess: () => {
+      void utils.post.getAllPosts.invalidate();
+      toast.success("Favorite status updated");
     },
   });
 
@@ -67,6 +82,8 @@ export default function BlogDashboardContent() {
             <TableHead>Title</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Created</TableHead>
+            <TableHead>Pin</TableHead>
+            <TableHead>Favorite</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -87,6 +104,28 @@ export default function BlogDashboardContent() {
               </TableCell>
               <TableCell>
                 {format(new Date(post.createdAt), "MMM d, yyyy")}
+              </TableCell>
+              <TableCell>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => togglePin({ id: post.id })}
+                >
+                  <Pin
+                    className={`h-4 w-4 ${post.isPinned ? "fill-current text-yellow-500" : ""}`}
+                  />
+                </Button>
+              </TableCell>
+              <TableCell>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleFavorite({ id: post.id })}
+                >
+                  <Star
+                    className={`h-4 w-4 ${post.isFavorited ? "fill-current text-yellow-500" : ""}`}
+                  />
+                </Button>
               </TableCell>
               <TableCell>
                 <div className="flex gap-2">

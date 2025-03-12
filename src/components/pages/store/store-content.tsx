@@ -14,7 +14,7 @@ export default function StoreContent() {
         <h1 className="text-4xl font-bold">Store Dashboard</h1>
         <Link
           href="/dashboard/store/new"
-          className="rounded-lg bg-white/10 px-4 py-2 text-white hover:bg-white/20"
+          className="rounded-lg bg-white/10 px-4 py-2 hover:bg-white/20"
         >
           Add Product
         </Link>
@@ -114,7 +114,7 @@ export default function StoreContent() {
                     <td className="whitespace-nowrap px-4 py-3">
                       <Link
                         href={`/dashboard/store/${product.id}`}
-                        className="text-sm text-zinc-400 hover:text-white"
+                        className="hover: text-sm text-zinc-400"
                       >
                         Edit
                       </Link>

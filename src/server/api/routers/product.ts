@@ -442,7 +442,7 @@ export const productRouter = createTRPCRouter({
       }));
     }),
 
-  getPendingReviews: protectedProcedure.query(async ({ ctx }) => {
+  getPendingReviews: publicProcedure.query(async ({ ctx }) => {
     if (!ctx.session?.user?.role || ctx.session.user.role !== "admin") {
       return [];
     }

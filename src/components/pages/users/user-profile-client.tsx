@@ -6,6 +6,13 @@ import { Button } from "~/components/ui/button";
 import { api } from "~/trpc/react";
 import { formatDate } from "~/lib/utils";
 import { ContactInfoForm } from "~/components/forms/contact-info-form";
+import { useTransition } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
+import { Badge } from "~/components/ui/badge";
+import { Switch } from "~/components/ui/switch";
+import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
 
 interface UserProfileClientProps {
   userId: string;
@@ -13,23 +20,59 @@ interface UserProfileClientProps {
 
 export default function UserProfileClient({ userId }: UserProfileClientProps) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const utils = api.useUtils();
 
-  const { data: user, isLoading: userLoading } = api.user.getById.useQuery({
-    id: userId,
-  });
+  const { data: user, isLoading } = api.user.getById.useQuery({ id: userId });
 
   const { data: orders, isLoading: ordersLoading } =
     api.order.getByUserId.useQuery({
       userId: userId,
     });
 
-  if (userLoading || ordersLoading) {
+  const { mutate: updateRole } = api.user.updateRole.useMutation({
+    onSuccess: () => {
+      startTransition(() => {
+        void utils.user.getById.invalidate({ id: userId });
+      });
+      toast.success("User role updated");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const { mutate: updateStatus } = api.user.updateStatus.useMutation({
+    onSuccess: () => {
+      startTransition(() => {
+        void utils.user.getById.invalidate({ id: userId });
+      });
+      toast.success("User status updated");
+    },
+    onError: (error) => {
+      toast.error(error.message);
+    },
+  });
+
+  const { mutate: updatePermissions } =
+    api.userPermissions.updatePermissions.useMutation({
+      onSuccess: () => {
+        startTransition(() => {
+          void utils.user.getById.invalidate({ id: userId });
+        });
+        toast.success("User permissions updated");
+      },
+      onError: (error) => {
+        toast.error(error.message);
+      },
+    });
+
+  if (isLoading) {
     return (
-      <div className="container mx-auto py-10">
+      <div className="container mx-auto py-8">
         <div className="animate-pulse space-y-4">
           <div className="h-8 w-1/4 rounded bg-zinc-200 dark:bg-zinc-800" />
           <div className="h-32 rounded bg-zinc-200 dark:bg-zinc-800" />
-          <div className="h-64 rounded bg-zinc-200 dark:bg-zinc-800" />
         </div>
       </div>
     );
@@ -37,109 +80,183 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
 
   if (!user) {
     return (
-      <div className="container mx-auto py-10">
-        <h1 className="text-2xl font-bold">User not found</h1>
+      <div className="container mx-auto py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">User not found</h1>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-10">
-      <div className="mb-8 flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h1 className="text-4xl font-bold">User Profile</h1>
+    <div className="container mx-auto py-8">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold">User Profile</h1>
       </div>
 
-      <div className="grid gap-8 md:grid-cols-2">
-        <div className="space-y-6">
-          <div className="rounded-lg border p-6 dark:border-zinc-800">
-            <h2 className="mb-4 text-xl font-semibold">User Information</h2>
-            <dl className="space-y-2">
-              <div className="flex justify-between">
-                <dt className="text-zinc-500">Name</dt>
-                <dd className="font-medium">{user.name}</dd>
+      <div className="grid gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Basic Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={user.avatarUrl ?? undefined} />
+                <AvatarFallback>
+                  {user.name?.slice(0, 2).toUpperCase() ?? "??"}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h2 className="text-xl font-semibold">{user.name}</h2>
+                <p className="text-muted-foreground">{user.email}</p>
               </div>
-              <div className="flex justify-between">
-                <dt className="text-zinc-500">Email</dt>
-                <dd className="font-medium">{user.email}</dd>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Member since</span>
+                <span>
+                  {formatDistanceToNow(new Date(user.createdAt), {
+                    addSuffix: true,
+                  })}
+                </span>
               </div>
-              <div className="flex justify-between">
-                <dt className="text-zinc-500">Role</dt>
-                <dd>
-                  <span
-                    className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                      user.role === "admin"
-                        ? "bg-purple-100 text-purple-800"
-                        : "bg-blue-100 text-blue-800"
-                    }`}
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Last updated</span>
+                <span>
+                  {formatDistanceToNow(new Date(user.updatedAt), {
+                    addSuffix: true,
+                  })}
+                </span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Role & Status</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">User Role</p>
+                <p className="text-muted-foreground text-sm">
+                  Current role:{" "}
+                  <Badge
+                    variant={user.role === "admin" ? "default" : "secondary"}
                   >
                     {user.role}
-                  </span>
-                </dd>
+                  </Badge>
+                </p>
               </div>
-              <div className="flex justify-between">
-                <dt className="text-zinc-500">Member Since</dt>
-                <dd className="font-medium">{formatDate(user.createdAt)}</dd>
-              </div>
-            </dl>
-          </div>
-
-          <div className="rounded-lg border p-6 dark:border-zinc-800">
-            <h2 className="mb-4 text-xl font-semibold">Contact Information</h2>
-            <ContactInfoForm userId={user.id} />
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="rounded-lg border p-6 dark:border-zinc-800">
-            <h2 className="mb-4 text-xl font-semibold">Order History</h2>
-            <div className="space-y-4">
-              {orders?.length === 0 ? (
-                <p className="text-zinc-500">No orders found</p>
-              ) : (
-                orders?.map((order) => (
-                  <div
-                    key={order.id}
-                    className="flex cursor-pointer items-start justify-between gap-4 rounded-lg bg-zinc-50 p-4 hover:bg-zinc-100 dark:bg-zinc-800/50 dark:hover:bg-zinc-800"
-                    onClick={() => router.push(`/orders/${order.id}`)}
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium">
-                          Order #{order.id.slice(0, 8)}...
-                        </h3>
-                        <span
-                          className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                            order.paymentStatus === "paid"
-                              ? "bg-green-100 text-green-800"
-                              : order.paymentStatus === "pending"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {order.paymentStatus}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm text-zinc-500">
-                        {formatDate(order.createdAt)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium">
-                        ${(order.amountTotal / 100).toFixed(2)}
-                      </p>
-                      <p className="mt-1 text-sm text-zinc-500">
-                        {order.items?.length} items
-                      </p>
-                    </div>
-                  </div>
-                ))
-              )}
+              <Button
+                variant={user.role === "admin" ? "destructive" : "default"}
+                onClick={() =>
+                  updateRole({
+                    userId: user.id,
+                    role: user.role === "admin" ? "user" : "admin",
+                  })
+                }
+                disabled={isPending}
+              >
+                Make {user.role === "admin" ? "User" : "Admin"}
+              </Button>
             </div>
-          </div>
-        </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Account Status</p>
+                <p className="text-muted-foreground text-sm">
+                  Current status:{" "}
+                  <Badge
+                    variant={
+                      user.status === "active" ? "success" : "destructive"
+                    }
+                  >
+                    {user.status}
+                  </Badge>
+                </p>
+              </div>
+              <Button
+                variant={user.status === "active" ? "destructive" : "default"}
+                onClick={() =>
+                  updateStatus({
+                    userId: user.id,
+                    status: user.status === "active" ? "suspended" : "active",
+                  })
+                }
+                disabled={isPending}
+              >
+                {user.status === "active" ? "Suspend" : "Activate"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Permissions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Can Comment</p>
+                <p className="text-muted-foreground text-sm">
+                  Allow user to comment on blog posts
+                </p>
+              </div>
+              <Switch
+                checked={user.canComment ?? false}
+                onCheckedChange={(checked) =>
+                  updatePermissions({
+                    userId: user.id,
+                    canComment: checked,
+                  })
+                }
+                disabled={isPending}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Can Review</p>
+                <p className="text-muted-foreground text-sm">
+                  Allow user to review products and services
+                </p>
+              </div>
+              <Switch
+                checked={user.canReview ?? false}
+                onCheckedChange={(checked) =>
+                  updatePermissions({
+                    userId: user.id,
+                    canReview: checked,
+                  })
+                }
+                disabled={isPending}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Can Respond</p>
+                <p className="text-muted-foreground text-sm">
+                  Allow user to respond to comments and reviews
+                </p>
+              </div>
+              <Switch
+                checked={user.canRespond ?? false}
+                onCheckedChange={(checked) =>
+                  updatePermissions({
+                    userId: user.id,
+                    canRespond: checked,
+                  })
+                }
+                disabled={isPending}
+              />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

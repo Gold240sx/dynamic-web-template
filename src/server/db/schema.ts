@@ -84,6 +84,12 @@ export const posts = createTable(
       .default(false),
     authorId: text("author_id").notNull(),
     likes: integer("likes", { mode: "number" }).notNull().default(0),
+    isPinned: integer("is_pinned", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    isFavorited: integer("is_favorited", { mode: "boolean" })
+      .notNull()
+      .default(false),
     createdAt: integer("created_at", { mode: "timestamp" })
       .default(sql`(unixepoch())`)
       .notNull(),
@@ -300,12 +306,16 @@ export const users = createTable(
       .primaryKey()
       .$defaultFn(() => nanoid()),
     name: text("name"),
-    email: text("email").notNull(),
+    email: text("email").notNull().unique(),
+    emailVerified: int("email_verified", { mode: "timestamp" }),
     password: text("password"),
     avatarUrl: text("avatar_url"),
-    role: text("role", { enum: ["user", "admin"] })
-      .default("user")
-      .notNull(),
+    role: text("role", { enum: ["admin", "user"] })
+      .notNull()
+      .default("user"),
+    status: text("status", { enum: ["active", "suspended"] })
+      .notNull()
+      .default("active"),
     canRespond: integer("can_respond", { mode: "boolean" })
       .notNull()
       .default(true),
@@ -324,6 +334,8 @@ export const users = createTable(
   },
   (table) => ({
     emailIdx: uniqueIndex("email_idx").on(table.email),
+    roleIdx: index("role_idx").on(table.role),
+    statusIdx: index("status_idx").on(table.status),
   }),
 );
 

@@ -21,7 +21,7 @@ const CartItemButton = ({
       >
         <ShoppingBag className="h-4 w-4" />
         <div
-          className={`absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-zinc-900 text-xs font-medium text-white dark:bg-white dark:text-zinc-900 ${cartItemCount > 0 ? "scale-100 opacity-100" : "scale-50 opacity-0"} transition-all duration-200`}
+          className={`absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-zinc-900 text-xs font-medium dark:bg-white dark:text-zinc-900 ${cartItemCount > 0 ? "scale-100 opacity-100" : "scale-50 opacity-0"} transition-all duration-200`}
         >
           {cartItemCount}
         </div>

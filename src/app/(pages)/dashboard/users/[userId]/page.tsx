@@ -1,4 +1,4 @@
-import UserProfileClient from "../../../../components/pages/users/user-profile-client";
+import UserProfileClient from "@/components/pages/users/user-profile-client";
 
 export default async function UserProfilePage({
   params,

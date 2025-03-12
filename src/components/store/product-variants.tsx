@@ -136,7 +136,7 @@ export function ProductVariants({ product }: ProductVariantsProps) {
                     sizes="(max-width: 768px) 25vw, 100px"
                   />
                   <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
-                    <span className="px-2 text-center text-sm text-white">
+                    <span className="px-2 text-center text-sm">
                       {variant.name}
                     </span>
                   </div>
@@ -164,7 +164,7 @@ export function ProductVariants({ product }: ProductVariantsProps) {
                 onClick={() => setSelectedVariant(variant)}
                 className={`flex items-center justify-between rounded-lg border p-4 text-left ${
                   selectedVariant.name === variant.name
-                    ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900"
+                    ? "border-zinc-900 bg-zinc-900 dark:border-white dark:bg-white dark:text-zinc-900"
                     : "border-zinc-200 hover:border-zinc-900 dark:border-zinc-800 dark:hover:border-white"
                 }`}
               >

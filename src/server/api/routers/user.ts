@@ -1,9 +1,9 @@
-import { createTRPCRouter, publicProcedure } from "../trpc";
+import { createTRPCRouter, publicProcedure, protectedProcedure } from "../trpc";
 import { db } from "../../db";
-import { cookies } from "next/headers";
 import { z } from "zod";
 import { users, userAddresses } from "~/server/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, like, or, desc, sql } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 
 const addressSchema = z.object({
   firstName: z.string(),
@@ -31,20 +31,60 @@ export const userRouter = createTRPCRouter({
       return user;
     }),
 
-  getAll: publicProcedure.query(async () => {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get("userId");
+  getAll: publicProcedure
+    .input(
+      z.object({
+        search: z.string().optional(),
+        page: z.number().default(1),
+        limit: z.number().default(10),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      // If user is not admin, return limited data
+      if (!ctx.session?.user?.role || ctx.session.user.role !== "admin") {
+        return {
+          users: [],
+          totalPages: 0,
+        };
+      }
 
-    if (!userId) {
-      return null;
-    }
+      const { search, page, limit } = input;
+      const offset = (page - 1) * limit;
 
-    const user = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.id, userId.value),
-    });
+      // Build the base query
+      const baseQuery = ctx.db.select().from(users);
+      if (search) {
+        baseQuery.where(
+          or(like(users.name, `%${search}%`), like(users.email, `%${search}%`)),
+        );
+      }
 
-    return user;
-  }),
+      // Get total count for pagination
+      const countResult = await ctx.db
+        .select({ total: sql<number>`count(*)` })
+        .from(users)
+        .where(
+          search
+            ? or(
+                like(users.name, `%${search}%`),
+                like(users.email, `%${search}%`),
+              )
+            : undefined,
+        );
+
+      const totalCount = countResult[0]?.total ?? 0;
+
+      // Get paginated results
+      const results = await baseQuery
+        .limit(limit)
+        .offset(offset)
+        .orderBy(desc(users.createdAt));
+
+      return {
+        users: results,
+        totalPages: Math.ceil(totalCount / limit),
+      };
+    }),
 
   updateContactInfo: publicProcedure
     .input(
@@ -53,11 +93,10 @@ export const userRouter = createTRPCRouter({
         name: z.string().optional(),
       }),
     )
-    .mutation(async ({ input }) => {
-      const cookieStore = await cookies();
-      const currentUserId = cookieStore.get("userId");
+    .mutation(async ({ ctx, input }) => {
+      const currentUserId = ctx.session?.user?.id;
 
-      if (!currentUserId || currentUserId.value !== input.userId) {
+      if (!currentUserId || currentUserId !== input.userId) {
         throw new Error("Unauthorized");
       }
 
@@ -69,14 +108,23 @@ export const userRouter = createTRPCRouter({
         updateData.name = input.name;
       }
 
-      await db.update(users).set(updateData).where(eq(users.id, input.userId));
+      await ctx.db
+        .update(users)
+        .set(updateData)
+        .where(eq(users.id, input.userId));
 
       return { success: true };
     }),
 
   getAddresses: publicProcedure
     .input(z.object({ userId: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      const currentUserId = ctx.session?.user?.id;
+
+      if (!currentUserId || currentUserId !== input.userId) {
+        throw new Error("Unauthorized");
+      }
+
       const addresses = await db.query.userAddresses.findMany({
         where: (userAddresses, { eq }) =>
           eq(userAddresses.userId, input.userId),
@@ -92,11 +140,10 @@ export const userRouter = createTRPCRouter({
         address: addressSchema,
       }),
     )
-    .mutation(async ({ input }) => {
-      const cookieStore = await cookies();
-      const currentUserId = cookieStore.get("userId");
+    .mutation(async ({ ctx, input }) => {
+      const currentUserId = ctx.session?.user?.id;
 
-      if (!currentUserId || currentUserId.value !== input.userId) {
+      if (!currentUserId || currentUserId !== input.userId) {
         throw new Error("Unauthorized");
       }
 
@@ -128,11 +175,10 @@ export const userRouter = createTRPCRouter({
         addressId: z.string(),
       }),
     )
-    .mutation(async ({ input }) => {
-      const cookieStore = await cookies();
-      const currentUserId = cookieStore.get("userId");
+    .mutation(async ({ ctx, input }) => {
+      const currentUserId = ctx.session?.user?.id;
 
-      if (!currentUserId || currentUserId.value !== input.userId) {
+      if (!currentUserId || currentUserId !== input.userId) {
         throw new Error("Unauthorized");
       }
 
@@ -144,6 +190,52 @@ export const userRouter = createTRPCRouter({
             eq(userAddresses.userId, input.userId),
           ),
         );
+
+      return { success: true };
+    }),
+
+  updateRole: protectedProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        role: z.enum(["admin", "user"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.role !== "admin") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only admins can update user roles",
+        });
+      }
+
+      await ctx.db
+        .update(users)
+        .set({ role: input.role })
+        .where(eq(users.id, input.userId));
+
+      return { success: true };
+    }),
+
+  updateStatus: protectedProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        status: z.enum(["active", "suspended"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.role !== "admin") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only admins can update user status",
+        });
+      }
+
+      await ctx.db
+        .update(users)
+        .set({ status: input.status })
+        .where(eq(users.id, input.userId));
 
       return { success: true };
     }),

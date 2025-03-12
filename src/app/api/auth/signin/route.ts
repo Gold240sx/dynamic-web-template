@@ -53,6 +53,14 @@ export async function POST(request: Request) {
       return Response.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
+    // Check if user is suspended
+    if (user.status === "suspended") {
+      return Response.json(
+        { error: "Your account has been suspended" },
+        { status: 403 },
+      );
+    }
+
     // Set a simple session cookie
     const response = new Response(JSON.stringify({ success: true }), {
       headers: { "Content-Type": "application/json" },

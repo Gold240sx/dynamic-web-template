@@ -107,7 +107,7 @@ export default function Pricing({
       <section className="bg-black">
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-24 lg:px-8">
           <div className="sm:align-center sm:flex sm:flex-col">
-            <p className="text-4xl font-extrabold text-white sm:text-center sm:text-6xl">
+            <p className="text-4xl font-extrabold sm:text-center sm:text-6xl">
               No subscription pricing plans found.
             </p>
           </div>
@@ -121,31 +121,22 @@ export default function Pricing({
       <nav className="fixed top-0 z-50 w-full border-b border-zinc-800 bg-black/50 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold text-white">
+            <Link href="/" className="text-xl font-bold">
               T3 MEGA
             </Link>
             <div className="ml-8 flex items-center gap-6">
-              <Link
-                href="/blog"
-                className="text-sm text-zinc-400 hover:text-white"
-              >
+              <Link href="/blog" className="hover: text-sm text-zinc-400">
                 Blog
               </Link>
-              <Link
-                href="/about"
-                className="text-sm text-zinc-400 hover:text-white"
-              >
+              <Link href="/about" className="hover: text-sm text-zinc-400">
                 About
               </Link>
-              <Link
-                href="/shop"
-                className="text-sm text-zinc-400 hover:text-white"
-              >
+              <Link href="/shop" className="hover: text-sm text-zinc-400">
                 Store
               </Link>
               <Link
                 href={user ? "/dashboard" : "/signin?redirectTo=/dashboard"}
-                className="text-sm text-zinc-400 hover:text-white"
+                className="hover: text-sm text-zinc-400"
               >
                 Dashboard
               </Link>
@@ -156,7 +147,7 @@ export default function Pricing({
               <>
                 <Link
                   href={`/users/${user.id}`}
-                  className="cursor-pointer text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                  className="dark:hover: cursor-pointer text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400"
                 >
                   {user.email}
                 </Link>
@@ -165,7 +156,7 @@ export default function Pricing({
                     type="submit"
                     variant="outline"
                     size="sm"
-                    className="text-white"
+                    className=""
                   >
                     Sign out
                   </Button>
@@ -173,7 +164,7 @@ export default function Pricing({
               </>
             ) : (
               <Link href="/signin">
-                <Button variant="outline" size="sm" className="text-white">
+                <Button variant="outline" size="sm" className="">
                   Sign in
                 </Button>
               </Link>
@@ -185,7 +176,7 @@ export default function Pricing({
       <section className="bg-black pt-16">
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-24 lg:px-8">
           <div className="sm:align-center sm:flex sm:flex-col">
-            <h1 className="text-4xl font-extrabold text-white sm:text-center sm:text-6xl">
+            <h1 className="text-4xl font-extrabold sm:text-center sm:text-6xl">
               Pricing Plans
             </h1>
             <p className="m-auto mt-5 max-w-2xl text-xl text-zinc-200 sm:text-center sm:text-2xl">
@@ -199,7 +190,7 @@ export default function Pricing({
                   type="button"
                   className={cn(
                     billingInterval === "month"
-                      ? "relative w-1/2 border-zinc-800 bg-zinc-700 text-white shadow-sm"
+                      ? "relative w-1/2 border-zinc-800 bg-zinc-700 shadow-sm"
                       : "relative ml-0.5 w-1/2 border border-transparent text-zinc-400",
                     "m-1 whitespace-nowrap rounded-md py-2 text-sm font-medium focus:z-10 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50 sm:w-auto sm:px-8",
                   )}
@@ -213,7 +204,7 @@ export default function Pricing({
                   type="button"
                   className={cn(
                     billingInterval === "year"
-                      ? "relative w-1/2 border-zinc-800 bg-zinc-700 text-white shadow-sm"
+                      ? "relative w-1/2 border-zinc-800 bg-zinc-700 shadow-sm"
                       : "relative ml-0.5 w-1/2 border border-transparent text-zinc-400",
                     "m-1 whitespace-nowrap rounded-md py-2 text-sm font-medium focus:z-10 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-opacity-50 sm:w-auto sm:px-8",
                   )}
@@ -263,7 +254,7 @@ export default function Pricing({
                         />
                       </div>
                     )}
-                    <h2 className="text-2xl font-semibold leading-6 text-white">
+                    <h2 className="text-2xl font-semibold leading-6">
                       {product.name}
                     </h2>
                     <p className="mt-4 text-zinc-300">{product.description}</p>
@@ -279,7 +270,7 @@ export default function Pricing({
                       type="button"
                       disabled={priceIdLoading === price.id}
                       onClick={() => handleSubscribe(price.id)}
-                      className="mt-8 block w-full rounded-md py-2 text-center text-sm font-semibold text-white hover:bg-zinc-900"
+                      className="mt-8 block w-full rounded-md py-2 text-center text-sm font-semibold hover:bg-zinc-900"
                     >
                       {priceIdLoading === price.id
                         ? "Loading..."

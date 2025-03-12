@@ -1,4 +1,4 @@
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   blogComments,
   productReviews,
@@ -7,16 +7,15 @@ import {
 } from "~/server/db/schema";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 
 export const notificationsRouter = createTRPCRouter({
-  getUnviewedCounts: publicProcedure.query(async ({ ctx }) => {
-    if (!ctx.session?.user?.role || ctx.session.user.role !== "admin") {
-      return {
-        comments: 0,
-        reviews: 0,
-        orders: 0,
-        total: 0,
-      };
+  getUnviewedCounts: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.session.user.role !== "admin") {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Only admins can view notification counts",
+      });
     }
 
     const [
@@ -79,7 +78,7 @@ export const notificationsRouter = createTRPCRouter({
     };
   }),
 
-  markAsViewed: publicProcedure
+  markAsViewed: protectedProcedure
     .input(
       z.object({
         type: z.enum([
@@ -92,8 +91,11 @@ export const notificationsRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.session?.user?.role || ctx.session.user.role !== "admin") {
-        return;
+      if (ctx.session.user.role !== "admin") {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Only admins can mark notifications as viewed",
+        });
       }
 
       const now = new Date();

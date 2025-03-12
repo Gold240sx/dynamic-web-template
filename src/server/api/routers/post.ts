@@ -35,6 +35,8 @@ export const postRouter = createTRPCRouter({
         excerpt: z.string().max(512).optional(),
         image: z.string().url().optional(),
         published: z.boolean().default(false),
+        isPinned: z.boolean().default(false),
+        isFavorited: z.boolean().default(false),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -48,6 +50,8 @@ export const postRouter = createTRPCRouter({
           excerpt: input.excerpt,
           image: input.image,
           published: input.published,
+          isPinned: input.isPinned,
+          isFavorited: input.isFavorited,
           slug,
           authorId: "system", // TODO: Replace with actual user ID when auth is implemented
         })
@@ -65,6 +69,8 @@ export const postRouter = createTRPCRouter({
         excerpt: z.string().max(512).optional(),
         image: z.string().url().optional(),
         published: z.boolean(),
+        isPinned: z.boolean(),
+        isFavorited: z.boolean(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -78,6 +84,8 @@ export const postRouter = createTRPCRouter({
           excerpt: input.excerpt,
           image: input.image,
           published: input.published,
+          isPinned: input.isPinned,
+          isFavorited: input.isFavorited,
           slug,
           updatedAt: new Date(),
         })
@@ -110,7 +118,7 @@ export const postRouter = createTRPCRouter({
     const allPosts = await ctx.db
       .select()
       .from(posts)
-      .orderBy(desc(posts.createdAt));
+      .orderBy(desc(posts.isPinned), desc(posts.createdAt));
 
     return allPosts;
   }),
@@ -405,4 +413,69 @@ export const postRouter = createTRPCRouter({
 
       return { success: true };
     }),
+
+  togglePin: publicProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const post = await ctx.db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, input.id))
+        .then((res) => res[0]);
+
+      if (!post) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Post not found",
+        });
+      }
+
+      await ctx.db
+        .update(posts)
+        .set({
+          isPinned: !post.isPinned,
+          updatedAt: new Date(),
+        })
+        .where(eq(posts.id, input.id));
+
+      return { success: true };
+    }),
+
+  toggleFavorite: publicProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const post = await ctx.db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, input.id))
+        .then((res) => res[0]);
+
+      if (!post) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Post not found",
+        });
+      }
+
+      await ctx.db
+        .update(posts)
+        .set({
+          isFavorited: !post.isFavorited,
+          updatedAt: new Date(),
+        })
+        .where(eq(posts.id, input.id));
+
+      return { success: true };
+    }),
+
+  getFavorites: publicProcedure.query(async ({ ctx }) => {
+    const favorites = await ctx.db
+      .select()
+      .from(posts)
+      .where(eq(posts.isFavorited, true))
+      .orderBy(desc(posts.createdAt))
+      .limit(5);
+
+    return favorites;
+  }),
 });

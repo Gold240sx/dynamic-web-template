@@ -9,11 +9,14 @@ import {
   FileText,
   MessageSquare,
   CheckSquare,
+  Users,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "~/lib/utils";
 import { Suspense } from "react";
 import { api } from "~/trpc/react";
 import { NotificationBadge } from "~/components/ui/notification-badge";
+import { useAuth } from "~/hooks/use-auth";
 
 const navigation = [
   {
@@ -32,6 +35,16 @@ const navigation = [
     icon: Package,
     showBadge: true,
     badgeType: "orders",
+  },
+  {
+    name: "Users",
+    href: "/dashboard/users",
+    icon: Users,
+  },
+  {
+    name: "Subscriptions",
+    href: "/dashboard/subscriptions",
+    icon: CreditCard,
   },
   {
     name: "Settings",
@@ -59,9 +72,13 @@ const approvalNavigation = [
 
 function DashboardNav() {
   const pathname = usePathname();
+  const { user } = useAuth();
   const { data: notifications } = api.notifications.getUnviewedCounts.useQuery(
     undefined,
-    { refetchInterval: 30000 }, // Refetch every 30 seconds
+    {
+      refetchInterval: 30000, // Refetch every 30 seconds
+      enabled: !!user, // Only run query when user is authenticated
+    },
   );
 
   const getBadgeCount = (type: "comments" | "reviews" | "orders") => {
@@ -81,8 +98,8 @@ function DashboardNav() {
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-base transition-colors",
                 isActive
-                  ? "bg-zinc-800 text-white"
-                  : "text-zinc-400 hover:bg-zinc-800 hover:text-white",
+                  ? "bg-zinc-800"
+                  : "hover: text-zinc-400 hover:bg-zinc-800",
               )}
             >
               <span className="relative inline-block pr-2">
@@ -113,8 +130,8 @@ function DashboardNav() {
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-base transition-colors",
                 isActive
-                  ? "bg-zinc-800 text-white"
-                  : "text-zinc-400 hover:bg-zinc-800 hover:text-white",
+                  ? "bg-zinc-800"
+                  : "hover: text-zinc-400 hover:bg-zinc-800",
               )}
             >
               <span className="relative inline-block">
@@ -144,7 +161,7 @@ export default function DashboardLayout({
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
-      <div id="sidebar" className="w-64 bg-zinc-900 text-white print:!hidden">
+      <div id="sidebar" className="w-64 bg-zinc-900 print:!hidden">
         <div className="flex h-16 items-center px-6">
           <Link href="/dashboard" className="text-lg font-semibold">
             Dashboard
@@ -156,7 +173,9 @@ export default function DashboardLayout({
       </div>
 
       {/* Main content */}
-      <div className="flex-1 print:m-0 print:w-full">{children}</div>
+      <div className="flex-1 border-none print:m-0 print:w-full">
+        {children}
+      </div>
     </div>
   );
 }

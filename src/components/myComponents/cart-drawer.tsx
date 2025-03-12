@@ -306,7 +306,7 @@ export function CartDrawer({
             id="email"
             type="email"
             value={email}
-            className="border-none !bg-zinc-800"
+            className="border-none"
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
             required
@@ -319,7 +319,7 @@ export function CartDrawer({
             initialAddress={address}
             firstName={firstName}
             lastName={lastName}
-            className="[&_*]:border-none [&_input]:border-none [&_input]:!bg-zinc-800 [&_select]:border-none [&_select]:!bg-zinc-800"
+            className="[&_input]: [&_select]: [&_*]:border-none [&_input]:border-none [&_select]:border-none"
           />
         )}
       </div>

@@ -9,7 +9,7 @@ import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 
 export const companyRouter = createTRPCRouter({
-  getPendingReviews: protectedProcedure.query(async ({ ctx }) => {
+  getPendingReviews: publicProcedure.query(async ({ ctx }) => {
     if (!ctx.session?.user?.role || ctx.session.user.role !== "admin") {
       return [];
     }

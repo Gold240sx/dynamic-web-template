@@ -126,7 +126,7 @@ export function ContactInfoForm({
           <Input
             id="name"
             value={name}
-            className="border-none !bg-zinc-800"
+            className="border-none"
             onChange={(e) => setName(e.target.value)}
             placeholder="Your full name"
           />
@@ -180,7 +180,7 @@ export function ContactInfoForm({
               </div>
               <AddressForm
                 onAddressChange={handleAddressSubmit}
-                className="[&_*]:border-none [&_input]:border-none [&_input]:!bg-zinc-800 [&_select]:border-none [&_select]:!bg-zinc-800"
+                className="[&_input]: [&_select]: [&_*]:border-none [&_input]:border-none [&_select]:border-none"
               />
             </CardContent>
           </Card>

@@ -123,7 +123,7 @@ export function AddressForm({
             <Input
               id="firstName"
               value={address.firstName}
-              className="border-none !bg-zinc-800"
+              className="border-none"
               onChange={(e) => handleChange("firstName", e.target.value)}
               placeholder="First name"
             />
@@ -133,7 +133,7 @@ export function AddressForm({
             <Input
               id="lastName"
               value={address.lastName}
-              className="border-none !bg-zinc-800"
+              className="border-none"
               onChange={(e) => handleChange("lastName", e.target.value)}
               placeholder="Last name"
             />
@@ -145,7 +145,7 @@ export function AddressForm({
             id="phone"
             type="tel"
             value={address.phone}
-            className="border-none !bg-zinc-800"
+            className="border-none"
             onChange={(e) => handleChange("phone", e.target.value)}
             placeholder="+1 (555) 555-5555"
           />
@@ -155,7 +155,7 @@ export function AddressForm({
           <Input
             id="line1"
             value={address.line1}
-            className="border-none !bg-zinc-800"
+            className="border-none"
             onChange={(e) => handleChange("line1", e.target.value)}
             placeholder="Street address"
           />
@@ -165,7 +165,7 @@ export function AddressForm({
           <Input
             id="line2"
             value={address.line2}
-            className="border-none !bg-zinc-800"
+            className="border-none"
             onChange={(e) => handleChange("line2", e.target.value)}
             placeholder="Apartment, suite, etc."
           />
@@ -176,7 +176,7 @@ export function AddressForm({
             <Input
               id="city"
               value={address.city}
-              className="border-none !bg-zinc-800"
+              className="border-none"
               onChange={(e) => handleChange("city", e.target.value)}
               placeholder="City"
             />
@@ -187,7 +187,7 @@ export function AddressForm({
               value={address.state}
               onValueChange={(value) => handleChange("state", value)}
             >
-              <SelectTrigger id="state" className="border-none !bg-zinc-800">
+              <SelectTrigger id="state" className="border-none">
                 <SelectValue placeholder="Select state" />
               </SelectTrigger>
               <SelectContent>
@@ -206,7 +206,7 @@ export function AddressForm({
             <Input
               id="postalCode"
               value={address.postalCode}
-              className="border-none !bg-zinc-800"
+              className="border-none"
               onChange={(e) => handleChange("postalCode", e.target.value)}
               placeholder="Postal code"
             />
@@ -216,7 +216,7 @@ export function AddressForm({
             <Input
               id="country"
               value={address.country}
-              className="border-none !bg-zinc-800"
+              className="border-none"
               onChange={(e) => handleChange("country", e.target.value)}
               placeholder="Country"
               disabled

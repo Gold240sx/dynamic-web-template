@@ -12,6 +12,8 @@ export const blogFormSchema = z.object({
     .optional(),
   image: z.string().url("Image must be a valid URL").optional(),
   published: z.boolean().default(false),
+  isPinned: z.boolean().default(false),
+  isFavorited: z.boolean().default(false),
   commentResponseType: z.enum(["admin", "all", "none"]).default("all"),
 });
 

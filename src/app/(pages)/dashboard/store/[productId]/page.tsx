@@ -300,7 +300,7 @@ function ProductForm({ productId }: { productId: string }) {
         <div className="flex gap-4">
           <Link
             href="/dashboard/store"
-            className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+            className="dark:hover: text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400"
           >
             Back to Store
           </Link>
@@ -525,8 +525,8 @@ function ProductForm({ productId }: { productId: string }) {
                         }}
                         className={`rounded-md px-3 py-1 text-sm transition-colors ${
                           variant.isLive
-                            ? "bg-white text-black dark:bg-zinc-950 dark:text-white"
-                            : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                            ? "dark: bg-white text-black dark:bg-zinc-950"
+                            : "dark:hover: text-zinc-500 hover:text-zinc-900 dark:text-zinc-400"
                         }`}
                       >
                         Live
@@ -561,8 +561,8 @@ function ProductForm({ productId }: { productId: string }) {
                         }}
                         className={`rounded-md px-3 py-1 text-sm transition-colors ${
                           variant.isDigital
-                            ? "bg-white text-black dark:bg-zinc-950 dark:text-white"
-                            : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                            ? "dark: bg-white text-black dark:bg-zinc-950"
+                            : "dark:hover: text-zinc-500 hover:text-zinc-900 dark:text-zinc-400"
                         }`}
                       >
                         {variant.isDigital ? "Digital" : "Physical"}

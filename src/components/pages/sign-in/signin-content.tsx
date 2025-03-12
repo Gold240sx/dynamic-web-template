@@ -74,7 +74,7 @@ function SignInForm({ redirectTo }: { redirectTo: string }) {
           id="email"
           type="email"
           placeholder="Enter your email"
-          className="border-none !bg-zinc-800"
+          className="border-none"
           {...register("email")}
           aria-invalid={!!errors.email}
         />
@@ -88,7 +88,7 @@ function SignInForm({ redirectTo }: { redirectTo: string }) {
           id="password"
           type="password"
           placeholder="Enter your password"
-          className="border-none !bg-zinc-800"
+          className="border-none"
           {...register("password")}
           aria-invalid={!!errors.password}
         />

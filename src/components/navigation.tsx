@@ -14,7 +14,10 @@ export function Navigation() {
   const { user } = useAuth();
   const { data: notifications } = api.notifications.getUnviewedCounts.useQuery(
     undefined,
-    { refetchInterval: 30000 }, // Refetch every 30 seconds
+    {
+      refetchInterval: 30000, // Refetch every 30 seconds
+      enabled: !!user, // Only run query when user is authenticated
+    },
   );
 
   const links = [
@@ -30,12 +33,9 @@ export function Navigation() {
   ];
 
   return (
-    <nav className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 print:!hidden">
+    <nav className="border-b border-zinc-200 bg-white text-white dark:border-zinc-800 dark:bg-zinc-950 print:!hidden">
       <div className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
-        <Link
-          href="/"
-          className="text-lg font-semibold text-zinc-900 dark:text-white"
-        >
+        <Link href="/" className="text-lg font-semibold text-white">
           T3 Store
         </Link>
         <div className="flex items-center space-x-6">
@@ -46,8 +46,8 @@ export function Navigation() {
                 className={cn(
                   "text-sm transition-colors",
                   pathname === link.href
-                    ? "text-zinc-900 dark:text-white"
-                    : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white",
+                    ? "dark: text-zinc-900"
+                    : "dark:hover: text-zinc-600 hover:text-zinc-900 dark:text-zinc-400",
                 )}
               >
                 {link.label}

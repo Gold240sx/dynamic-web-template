@@ -9,7 +9,6 @@
 import { initTRPC } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
-import { cookies } from "next/headers";
 import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
@@ -28,13 +27,13 @@ import { TRPCError } from "@trpc/server";
  * @see https://trpc.io/docs/server/context
  */
 export const createTRPCContext = async (opts: { headers: Headers }) => {
-  const cookieStore = await cookies();
-  const userId = cookieStore.get("userId");
+  // Get the session from the headers
+  const userId = opts.headers.get("x-user-id");
 
   let session = null;
   if (userId) {
     const user = await db.query.users.findFirst({
-      where: eq(users.id, userId.value),
+      where: eq(users.id, userId),
     });
     if (user) {
       session = { user };
@@ -128,17 +127,18 @@ export const publicProcedure = t.procedure.use(timingMiddleware);
  * This is the base piece you use to build new queries and mutations on your tRPC API that require authentication.
  * It verifies the session is valid and guarantees ctx.session.user is not null.
  */
-export const protectedProcedure = t.procedure
-  .use(timingMiddleware)
-  .use(({ ctx, next }) => {
-    if (!ctx.session?.user) {
-      throw new TRPCError({ code: "UNAUTHORIZED" });
-    }
-    return next({
-      ctx: {
-        ...ctx,
-        // infers that `session.user` is non-nullable
-        session: { ...ctx.session, user: ctx.session.user },
-      },
+const enforceUserIsAuthed = t.middleware(({ ctx, next }) => {
+  if (!ctx.session?.user) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "You must be logged in to access this resource",
     });
+  }
+  return next({
+    ctx: {
+      session: { ...ctx.session, user: ctx.session.user },
+    },
   });
+});
+
+export const protectedProcedure = t.procedure.use(enforceUserIsAuthed);

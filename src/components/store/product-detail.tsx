@@ -60,7 +60,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
         </div>
         <button
           onClick={() => addToCart({ product, selectedVariant, quantity: 1 })}
-          className="mt-8 w-full rounded-md bg-zinc-900 px-8 py-3 text-base font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="mt-8 w-full rounded-md bg-zinc-900 px-8 py-3 text-base font-medium transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
           Add to Cart
         </button>

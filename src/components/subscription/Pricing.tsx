@@ -16,6 +16,7 @@ import { toast } from "react-hot-toast";
 import { api } from "~/trpc/react";
 import { useAuth } from "~/hooks/use-auth";
 import Link from "next/link";
+import Image from "next/image";
 
 type BillingInterval = "month" | "year";
 
@@ -253,9 +254,11 @@ export default function Pricing({
                   <div className="p-6">
                     {product.image && (
                       <div className="mb-4 flex justify-center">
-                        <img
+                        <Image
                           src={product.image}
                           alt={product.name}
+                          width={100}
+                          height={100}
                           className="h-32 w-32 rounded-full object-cover"
                         />
                       </div>

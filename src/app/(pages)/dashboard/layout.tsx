@@ -2,10 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Store, Package, Settings } from "lucide-react";
+import { Store, Package, Settings, FileText } from "lucide-react";
 import { cn } from "~/lib/utils";
 
 const navigation = [
+  {
+    name: "Blog",
+    href: "/dashboard/blog",
+    icon: FileText,
+  },
   {
     name: "Store",
     href: "/dashboard/store",

@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryState } from "nuqs";
 import Link from "next/link";
+import { useEffect } from "react";
 
 import { type BlogFormData, blogFormSchema } from "~/lib/validations/blog";
 import { api } from "~/trpc/react";
@@ -21,9 +22,14 @@ import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import { Switch } from "~/components/ui/switch";
 
-export default function BlogFormContent() {
+interface BlogFormContentProps {
+  postId?: string | null;
+}
+
+export default function BlogFormContent({ postId }: BlogFormContentProps) {
   const router = useRouter();
   const [draft] = useQueryState("draft");
+  const utils = api.useContext();
 
   const form = useForm<BlogFormData>({
     resolver: zodResolver(blogFormSchema),
@@ -35,39 +41,66 @@ export default function BlogFormContent() {
     },
   });
 
-  const { mutate: createPost, isPending } = api.post.create.useMutation({
-    onSuccess: (data) => {
-      if (data?.slug) {
-        router.push(`/blog/${data.slug}`);
-      }
-    },
-  });
+  const { data: post } = api.post.getById.useQuery(
+    { id: Number(postId) },
+    { enabled: !!postId },
+  );
+
+  const { mutate: createPost, isPending: isCreating } =
+    api.post.create.useMutation({
+      onSuccess: (data) => {
+        if (data?.slug) {
+          void utils.post.getAllPosts.invalidate();
+          router.push(`/blog/${data.slug}`);
+        }
+      },
+    });
+
+  const { mutate: updatePost, isPending: isUpdating } =
+    api.post.update.useMutation({
+      onSuccess: (data) => {
+        if (data?.slug) {
+          void utils.post.getAllPosts.invalidate();
+          router.push(`/blog/${data.slug}`);
+        }
+      },
+    });
+
+  useEffect(() => {
+    if (post) {
+      form.reset({
+        title: post.title,
+        content: post.content,
+        excerpt: post.excerpt ?? "",
+        published: post.published,
+      });
+    }
+  }, [post, form]);
 
   const onSubmit = (data: BlogFormData) => {
-    createPost(data);
+    if (postId) {
+      updatePost({ id: Number(postId), ...data });
+    } else {
+      createPost(data);
+    }
   };
+
+  const isPending = isCreating || isUpdating;
 
   return (
     <div className="container mx-auto max-w-2xl py-8">
       <nav className="mb-8 flex items-center gap-x-4">
         <Link
-          href="/"
+          href="/dashboard/blog"
           className="text-muted-foreground hover:text-foreground text-sm"
         >
-          Home
+          Back to Blog Dashboard
         </Link>
-        <span className="text-muted-foreground">/</span>
-        <Link
-          href="/blog"
-          className="text-muted-foreground hover:text-foreground text-sm"
-        >
-          Blog
-        </Link>
-        <span className="text-muted-foreground">/</span>
-        <span className="text-sm">Create Post</span>
       </nav>
 
-      <h1 className="mb-8 text-3xl font-bold">Create New Blog Post</h1>
+      <h1 className="mb-8 text-3xl font-bold">
+        {postId ? "Edit Blog Post" : "Create New Blog Post"}
+      </h1>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -143,7 +176,13 @@ export default function BlogFormContent() {
           />
 
           <Button type="submit" className="w-full" disabled={isPending}>
-            {isPending ? "Creating..." : "Create Post"}
+            {isPending
+              ? postId
+                ? "Updating..."
+                : "Creating..."
+              : postId
+                ? "Update Post"
+                : "Create Post"}
           </Button>
         </form>
       </Form>

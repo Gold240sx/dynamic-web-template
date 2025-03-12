@@ -1,0 +1,69 @@
+{
+  "$schema": "https://cdn.statically.io/gh/nguyenngoclongdev/cdn/main/schema/v10/terminal-keeper.json",
+  "theme": "tribe",
+  "active": "default",
+  "activateOnStartup": true,
+  "keepExistingTerminals": false,
+  "sessions": {
+    "default": [
+      {
+        "name": "Studio",
+        "autoExecuteCommands": false,
+        "icon": "server",
+        "color": "terminal.ansiBrightGreen",
+        "commands": ["pnpm studio"]
+      },
+      {
+        "name": "Dev",
+        "autoExecuteCommands": true,
+        "icon": "beaker",
+        "color": "terminal.ansiBrightCyan",
+        "commands": ["pnpm dev"]
+      },
+      {
+        "name": "Install",
+        "autoExecuteCommands": false,
+        "icon": "terminal-bash",
+        "color": "terminal.ansiWhite",
+        "commands": []
+      },
+      {
+        "name": "Build",
+        "autoExecuteCommands": false,
+        "icon": "zap",
+        "color": "terminal.ansiBrightYellow",
+        "commands": ["pnpm build"]
+      },
+      {
+        "name": "Email",
+        "autoExecuteCommands": false,
+        "icon": "mail",
+        "color": "terminal.ansiBlue",
+        "commands": ["pnpm email"]
+      },
+      {
+        "name": "Postgres",
+        "autoExecuteCommands": false,
+        "icon": "rocket",
+        "color": "terminal.ansiBrightRed",
+        "commands": []
+      },
+      {
+        "name": "Stripe",
+        "icon": "credit-card",
+        "autoExecuteCommands": false,
+        "color": "terminal.ansiGreen",
+        "commands": [
+          "stripe login",
+          "stripe listen --forward-to localhost:3000/api/stripe/webhook"
+        ]
+      }
+    ],
+    "saved-session": [
+      {
+        "name": "connect",
+        "commands": [""]
+      }
+    ]
+  }
+}

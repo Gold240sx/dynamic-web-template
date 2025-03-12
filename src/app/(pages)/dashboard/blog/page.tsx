@@ -1,10 +1,10 @@
 import { Suspense } from "react";
-import BlogFormContent from "../../../../components/pages/blog/blog-form";
+import BlogDashboardContent from "@/components/pages/blog/blog-dashboard";
 
 export default function BlogPage() {
   return (
     <Suspense>
-      <BlogFormContent />
+      <BlogDashboardContent />
     </Suspense>
   );
 }

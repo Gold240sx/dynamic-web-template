@@ -1,5 +1,8 @@
 import { Suspense } from "react";
-import SuccessContent from "../../../../components/pages/checkout/success-content";
+import SuccessContent from "@/components/pages/checkout/success-content";
+
+// Force dynamic rendering at the page level
+export const dynamic = "force-dynamic";
 
 export default function SuccessPage() {
   return (

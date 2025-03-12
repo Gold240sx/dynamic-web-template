@@ -26,6 +26,21 @@ body {
     rgb(var(--background-start-rgb));
 }
 
+@layer components {
+  input,
+  textarea.bg-background,
+  input:active,
+  textarea.bg-background:active,
+  input:focus-visible,
+  textarea.bg-background:focus-visible {
+    background-color: rgb(36, 36, 36) !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: white;
+    @apply ring-2 ring-teal-400 ring-offset-1;
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

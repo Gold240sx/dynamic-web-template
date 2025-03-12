@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useQueryState } from "nuqs";
 import Link from "next/link";
 import { useStore } from "~/context/store-context";
 import { redirect } from "next/navigation";
-import { getCheckoutSession } from "@/app/actions/checkout/actions";
+import { getCheckoutSession } from "~/actions/checkout/actions";
 
 export default function SuccessContent() {
-  const searchParams = useSearchParams();
-  const session_id = searchParams.get("session_id");
+  const [sessionId] = useQueryState("session_id");
   const [sessionData, setSessionData] = useState<{
     status: string;
     customerEmail?: string;
@@ -19,7 +18,7 @@ export default function SuccessContent() {
   const store = useStore();
 
   useEffect(() => {
-    if (!session_id) {
+    if (!sessionId) {
       setError("Please provide a valid session_id");
       return;
     }
@@ -28,7 +27,7 @@ export default function SuccessContent() {
     if (!sessionData && !error) {
       const fetchSession = async () => {
         try {
-          const data = await getCheckoutSession(session_id);
+          const data = await getCheckoutSession(sessionId);
           if (data.status) {
             setSessionData({
               status: data.status,
@@ -49,7 +48,7 @@ export default function SuccessContent() {
 
       void fetchSession();
     }
-  }, [session_id, store, sessionData, error, hasCleared]);
+  }, [sessionId, store, sessionData, error, hasCleared]);
 
   if (error) {
     return (

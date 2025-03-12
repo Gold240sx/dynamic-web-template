@@ -44,6 +44,14 @@ const config = {
         protocol: "https",
         hostname: "*.public.blob.vercel-storage.com",
       },
+      {
+        protocol: "https",
+        hostname: "stripe-camo.global.ssl.fastly.net",
+      },
+      {
+        protocol: "https",
+        hostname: "d1wqzb5bdbcre6.cloudfront.net",
+      },
     ],
   },
 };

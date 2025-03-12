@@ -32,7 +32,53 @@ export const postRouter = createTRPCRouter({
       return post[0];
     }),
 
-  getAll: publicProcedure.query(async ({ ctx }) => {
+  update: publicProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        title: z.string().min(3).max(256),
+        content: z.string().min(10),
+        excerpt: z.string().max(512).optional(),
+        published: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const slug = slugify(input.title);
+
+      const post = await ctx.db
+        .update(posts)
+        .set({
+          title: input.title,
+          content: input.content,
+          excerpt: input.excerpt,
+          published: input.published,
+          slug,
+          updatedAt: new Date(),
+        })
+        .where(eq(posts.id, input.id))
+        .returning();
+
+      return post[0];
+    }),
+
+  delete: publicProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.delete(posts).where(eq(posts.id, input.id));
+      return { success: true };
+    }),
+
+  getById: publicProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const post = await ctx.db
+        .select()
+        .from(posts)
+        .where(eq(posts.id, input.id));
+      return post[0];
+    }),
+
+  getAllPosts: publicProcedure.query(async ({ ctx }) => {
     return ctx.db.select().from(posts).orderBy(desc(posts.createdAt));
   }),
 

@@ -54,16 +54,12 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
             const headers = new Headers();
             headers.set("x-trpc-source", "nextjs-react");
             // Get the userId from the cookie
-            const cookies = document.cookie.split(";").reduce(
-              (acc, cookie) => {
-                const [key, value] = cookie.trim().split("=");
-                acc[key] = value;
-                return acc;
-              },
-              {} as Record<string, string>,
-            );
-            if (cookies.userId) {
-              headers.set("x-user-id", cookies.userId);
+            const userId = document.cookie
+              .split("; ")
+              .find((row) => row.startsWith("userId="))
+              ?.split("=")[1];
+            if (userId) {
+              headers.set("x-user-id", userId);
             }
             return headers;
           },

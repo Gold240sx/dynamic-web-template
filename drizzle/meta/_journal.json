@@ -15,6 +15,27 @@
       "when": 1741773303824,
       "tag": "0001_shocking_valkyrie",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1741776790477,
+      "tag": "0002_futuristic_firedrake",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1741776938128,
+      "tag": "0003_flowery_mentor",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1741777430976,
+      "tag": "0004_productive_maestro",
+      "breakpoints": true
     }
   ]
 }

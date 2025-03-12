@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { api } from "@/trpc/server";
 import Pricing from "@/components/subscription/Pricing";
+import { ReviewsSection } from "@/components/pages/home/reviews-section";
 import type { SubscriptionProductWithPrices } from "@/server/db/types";
 import type { InferSelectModel } from "drizzle-orm";
 import type { subscriptions, users } from "@/server/db/schema";
@@ -61,6 +62,7 @@ export default async function HomePage() {
           subscription={subscription ?? null}
           user={user ?? null}
         />
+        <ReviewsSection />
       </div>
     </main>
   );

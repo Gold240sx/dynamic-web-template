@@ -6,6 +6,8 @@ import { createCaller } from "~/server/api/root";
 import { createTRPCContext } from "~/server/api/trpc";
 import { generateMetadata } from "../../../../components/pages/blog/metadata";
 import { BlogShareButton } from "~/components/pages/blog/blog-share-button";
+import { PostLikeButton } from "~/components/pages/blog/post-like-button";
+import { PostComments } from "~/components/post-comments";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,10 @@ export default async function BlogPostPage({
   const post = await caller.post.getBySlug({ slug });
 
   if (!post) return notFound();
+
+  // Get initial likes and liked status
+  const likeStatus = await caller.post.getLikeStatus({ postId: post.id });
+  const comments = await caller.post.getComments({ postId: post.id });
 
   return (
     <div className="container mx-auto max-w-3xl py-8">
@@ -61,7 +67,14 @@ export default async function BlogPostPage({
         <header className="mb-8">
           <div className="mb-2 flex items-center justify-between">
             <h1 className="text-4xl font-bold">{post.title}</h1>
-            <BlogShareButton title={post.title} excerpt={post.excerpt} />
+            <div className="ml-auto flex items-center gap-x-4">
+              <PostLikeButton
+                postId={post.id}
+                initialLikes={post.likes}
+                initialLiked={likeStatus.liked}
+              />
+              <BlogShareButton title={post.title} excerpt={post.excerpt} />
+            </div>
           </div>
           <div className="text-muted-foreground flex items-center gap-x-4 text-sm">
             <time dateTime={post.createdAt.toISOString()}>
@@ -75,11 +88,18 @@ export default async function BlogPostPage({
           </div>
         </header>
 
-        {post.excerpt && (
+        {/* {post.excerpt && (
           <p className="text-muted-foreground mb-8 text-xl">{post.excerpt}</p>
-        )}
+        )} */}
 
         <div className="prose prose-lg max-w-none">{post.content}</div>
+
+        <div className="mt-8 border-t pt-8">
+          <PostComments
+            postId={post.id}
+            commentResponseType={post.commentResponseType ?? "all"}
+          />
+        </div>
       </article>
     </div>
   );

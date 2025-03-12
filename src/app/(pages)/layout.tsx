@@ -5,11 +5,14 @@ import { TRPCReactProvider } from "~/trpc/react";
 import { StoreProvider } from "~/context/store-context";
 import { Navigation } from "~/components/navigation";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
-import { Toaster } from "~/components/ui/toaster";
+import { Toaster } from "sonner";
+import { Providers } from "../providers";
+import { cn } from "~/lib/utils";
+import { type Metadata } from "next";
 
-export const metadata = {
-  title: "T3 Store",
-  description: "A modern e-commerce store built with the T3 Stack",
+export const metadata: Metadata = {
+  title: "T3 Blog & Store",
+  description: "A modern blog and e-commerce store built with the T3 Stack",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
@@ -19,13 +22,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={`font-sans ${GeistSans.variable}`}>
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={cn("font-sans", GeistSans.variable)}
+        suppressHydrationWarning
+      >
         <TRPCReactProvider>
           <StoreProvider>
-            <Navigation />
-            <NuqsAdapter>{children}</NuqsAdapter>
-            <Toaster />
+            <Providers>
+              <Navigation />
+              <NuqsAdapter>{children}</NuqsAdapter>
+              <Toaster />
+            </Providers>
           </StoreProvider>
         </TRPCReactProvider>
       </body>

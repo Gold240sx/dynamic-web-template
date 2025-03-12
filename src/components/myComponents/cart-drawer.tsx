@@ -122,26 +122,11 @@ export function CartDrawer({
     return item.variant.stock === -1 || item.quantity < item.variant.stock;
   };
 
-  // Load user's address and name if available
+  // Load user's name and email if available
   useEffect(() => {
     if (!user) return;
 
-    if (user.billingAddress) {
-      const savedAddress = user.billingAddress as BillingAddress;
-
-      setOriginalAddress(savedAddress);
-      setAddress({
-        firstName: firstName ?? savedAddress.firstName ?? "",
-        lastName: lastName ?? savedAddress.lastName ?? "",
-        line1: savedAddress.line1 ?? "",
-        line2: savedAddress.line2 ?? "",
-        city: savedAddress.city ?? "",
-        state: savedAddress.state ?? "",
-        postalCode: savedAddress.postalCode ?? "",
-        country: savedAddress.country ?? "US",
-        phone: savedAddress.phone ?? "",
-      });
-    } else if (firstName || lastName) {
+    if (firstName || lastName) {
       setAddress((prev) => ({
         ...prev,
         firstName: firstName ?? prev.firstName,
@@ -159,12 +144,8 @@ export function CartDrawer({
   };
 
   const hasAddressChanged = useMemo(() => {
-    if (!originalAddress || !user) return false;
-    return Object.keys(originalAddress).some((key) => {
-      const k = key as keyof BillingAddress;
-      return originalAddress[k] !== address[k];
-    });
-  }, [originalAddress, address, user]);
+    return false; // Address changes are now handled per-order
+  }, []);
 
   const proceedToCheckout = async (shouldSave = false) => {
     try {
@@ -172,7 +153,7 @@ export function CartDrawer({
       if (user && !isGuest && shouldSave) {
         updateUser({
           userId: user.id,
-          billingAddress: address,
+          name: `${address.firstName} ${address.lastName}`,
         });
       }
 

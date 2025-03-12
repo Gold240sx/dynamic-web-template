@@ -1,0 +1,1 @@
+ALTER TABLE "blog_comments" ADD COLUMN "parent_id" text REFERENCES "blog_comments"("id"); 

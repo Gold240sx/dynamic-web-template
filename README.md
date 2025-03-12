@@ -70,6 +70,9 @@ Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/ver
 ## User Accounts
 
 - ✅User information (name, email, phone, address)
+- User Permissions (canComment, canRespond, canReview - Admin control)
+- isSubscribed (Email Subscribers)
+- isSubscribed ( )
 - ✅Name Parser
 - ✅Order History
 

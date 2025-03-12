@@ -1,5 +1,8 @@
+"use client";
+
 import { createId } from "@paralleldrive/cuid2";
-import { db } from "./index";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import Database from "better-sqlite3";
 import {
   productCategories,
   products,
@@ -11,10 +14,14 @@ import {
   users,
   orders,
   orderItems,
+  companyReviews,
 } from "./schema";
 import type { InferInsertModel } from "drizzle-orm";
-import { appConfig } from "~/app-config";
 import bcrypt from "bcryptjs";
+
+// Create a direct database connection without going through the environment validation
+const sqlite = new Database("src/server/db/sqlite.db");
+const db = drizzle(sqlite);
 
 async function main() {
   // Clear existing data - we want to delete all rows
@@ -28,17 +35,18 @@ async function main() {
   await db.delete(subscriptionProducts);
   await db.delete(orderItems);
   await db.delete(orders);
+  await db.delete(companyReviews);
   await db.delete(users);
   /* eslint-enable drizzle/enforce-delete-with-where */
 
   // Create admin user with hashed password
-  const hashedPassword = await bcrypt.hash(appConfig.admin.password, 10);
+  const hashedPassword = await bcrypt.hash("admin123!@#", 10);
   const adminUser = await db
     .insert(users)
     .values({
       id: createId(),
-      email: appConfig.admin.email,
-      name: appConfig.admin.name,
+      email: "admin@example.com",
+      name: "Admin User",
       password: hashedPassword,
       role: "admin",
     })
@@ -48,157 +56,49 @@ async function main() {
     throw new Error("Failed to create admin user");
   }
 
-  // Seed product categories
-  const categories = await db
-    .insert(productCategories)
-    .values([
-      { id: createId(), name: "Software", description: "Software products" },
-      { id: createId(), name: "Fruits", description: "Fresh fruits" },
-    ])
-    .returning();
-
-  const softwareCategory = categories.find((c) => c.name === "Software");
-  const fruitsCategory = categories.find((c) => c.name === "Fruits");
-
-  if (!softwareCategory || !fruitsCategory) {
-    throw new Error("Failed to create required categories");
-  }
-
-  // Seed products
-  const orangesProductResult = await db
-    .insert(products)
-    .values({
-      id: createId(),
-      name: "Oranges",
-      description: "Many kinds of delicious juicy oranges",
-      categoryId: fruitsCategory.id,
-      isLive: true,
-    })
-    .returning();
-
-  const demoProductResult = await db
-    .insert(products)
-    .values({
-      id: createId(),
-      name: "Digital Goods - Free Demo",
-      description: "Demo",
-      categoryId: softwareCategory.id,
-      isLive: true,
-    })
-    .returning();
-
-  if (!orangesProductResult[0] || !demoProductResult[0]) {
-    throw new Error("Failed to create products");
-  }
-
-  const orangesProduct = orangesProductResult[0];
-  const demoProduct = demoProductResult[0];
-
-  // Seed variants for oranges
-  const orangeVariantsResult = await db
-    .insert(productVariants)
+  // Create some regular users for reviews
+  const regularUsers = await db
+    .insert(users)
     .values([
       {
         id: createId(),
-        productId: orangesProduct.id,
-        name: "Mandarin",
-        description: "small, with big flavor!",
-        price: 4.99, // Store in cents
-        stock: -1,
-        isDigital: false,
-        isLive: true,
-        stripeProductId: "prod_RutTKypkW9mJpm", // prod: "prod_RuGIZSP89oRjML",
-        attributes: JSON.stringify({}),
+        email: "john.doe@example.com",
+        name: "John Doe",
+        password: await bcrypt.hash("password123", 10),
+        role: "user",
       },
       {
         id: createId(),
-        productId: orangesProduct.id,
-        name: "Blood Orange",
-        description: "Unique tart taste",
-        price: 8.99,
-        stock: 5,
-        isDigital: false,
-        isLive: true,
-        stripeProductId: "prod_RutTrx9D5dTTx3", // prod: "prod_RuGHAsspDNY6q6",
-        attributes: JSON.stringify({}),
+        email: "jane.smith@example.com",
+        name: "Jane Smith",
+        password: await bcrypt.hash("password123", 10),
+        role: "user",
       },
       {
         id: createId(),
-        productId: orangesProduct.id,
-        name: "Free Oranges",
-        description: "Free oranges for the needy",
-        price: 0,
-        stock: -1,
-        isDigital: false,
-        isLive: true,
-        stripeProductId: "prod_RutWcHVdRMDarp", // prod: "prod_RuM5Kf2ftqdp7A",
-        attributes: JSON.stringify({}),
+        email: "mike.wilson@example.com",
+        name: "Mike Wilson",
+        password: await bcrypt.hash("password123", 10),
+        role: "user",
+      },
+      {
+        id: createId(),
+        email: "240designworks@gmail.com",
+        name: "240 Design Works",
+        password: await bcrypt.hash("12345678", 10),
+        role: "user",
       },
     ])
     .returning();
 
-  // Seed variant for demo product
-  const demoVariantResult = await db
-    .insert(productVariants)
-    .values({
-      id: createId(),
-      productId: demoProduct.id,
-      name: "Demo",
-      description: "small, with big flavor!",
-      price: 0,
-      stock: -1,
-      isDigital: true,
-      isLive: true,
-      stripeProductId: "prod_RutX085K8SAIyv", // prod: "prod_RuUpEz67o5neJz",
-      attributes: JSON.stringify({}),
-    })
-    .returning();
-
-  if (!orangeVariantsResult[0] || !demoVariantResult[0]) {
-    throw new Error("Failed to create variants");
+  if (
+    !regularUsers[0] ||
+    !regularUsers[1] ||
+    !regularUsers[2] ||
+    !regularUsers[3]
+  ) {
+    throw new Error("Failed to create regular users");
   }
-
-  const orangeVariants = orangeVariantsResult;
-  const demoVariant = demoVariantResult[0];
-
-  // Verify we have all orange variants
-  if (!orangeVariants[0] || !orangeVariants[1] || !orangeVariants[2]) {
-    throw new Error("Failed to create all orange variants");
-  }
-
-  // Seed images for orange variants
-  await db.insert(variantImages).values([
-    {
-      id: createId(),
-      variantId: orangeVariants[0].id,
-      url: "https://www.shutterstock.com/shutterstock/photos/2053015835/display_1500/stock-photo-orange-with-sliced-and-green-leaves-isolated-on-white-background-2053015835.jpg",
-      title: "Mandarin",
-      order: 0,
-    },
-    {
-      id: createId(),
-      variantId: orangeVariants[1].id,
-      url: "https://motherwouldknow.com/wp-content/uploads/2014/01/20140127bloodorangecut.jpg",
-      title: "Blood Orange",
-      order: 0,
-    },
-    {
-      id: createId(),
-      variantId: orangeVariants[2].id,
-      url: "https://www.gardenzeus.com/wp-content/uploads/GZctorange-2.jpg",
-      title: "Free Oranges",
-      order: 0,
-    },
-  ]);
-
-  // Seed image for demo variant
-  await db.insert(variantImages).values({
-    id: createId(),
-    variantId: demoVariant.id,
-    url: "https://www.shutterstock.com/image-photo/igniting-innovation-harnessing-power-coding-600w-2425426569.jpg",
-    title: "Demo",
-    order: 0,
-  });
 
   // Subscription product IDs
   const premiumPlusId = "prod_RutfTUnFkw67zg"; // prod: "prod_R52C1XYtD5aP4S";
@@ -285,119 +185,206 @@ async function main() {
     },
   ]);
 
-  // Seed blog posts
-  await db.insert(posts).values([
+  // Add company reviews
+  await db.insert(companyReviews).values([
     {
-      title: "Blog 1",
-      slug: "blog-1",
-      content: "Blog 1 Content",
-      excerpt: "Blog 1 Preview",
-      published: true,
-      authorId: "default-author",
+      id: createId(),
+      userId: regularUsers[0].id,
+      content:
+        "Amazing service and quality products! The customer support team went above and beyond to help me with my order. Will definitely be shopping here again.",
+      rating: 5,
+      isApproved: true,
+      createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+      updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    },
+    {
+      id: createId(),
+      userId: regularUsers[1].id,
+      content:
+        "Great selection of products and fast shipping. The website is easy to navigate, and I love the new digital goods section. The prices are competitive too!",
+      rating: 4,
+      isApproved: true,
+      createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+      updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+    },
+    {
+      id: createId(),
+      userId: regularUsers[2].id,
+      content:
+        "Exceptional experience from start to finish. The quality of their fruits is outstanding, and their subscription service is a game-changer. Highly recommend!",
+      rating: 5,
+      isApproved: true,
+      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+      updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
     },
   ]);
 
-  // Get the variants we created earlier
-  const variants = await db.query.productVariants.findMany();
-  const mandarinVariant = variants.find((v) => v.name === "Mandarin");
-  const bloodOrangeVariant = variants.find((v) => v.name === "Blood Orange");
+  // Seed product categories
+  const categories = await db
+    .insert(productCategories)
+    .values([
+      { id: createId(), name: "Software", description: "Software products" },
+      { id: createId(), name: "Fruits", description: "Fresh fruits" },
+    ])
+    .returning();
 
-  if (!mandarinVariant || !bloodOrangeVariant) {
-    throw new Error("Failed to find required product variants");
+  const softwareCategory = categories.find((c) => c.name === "Software");
+  const fruitsCategory = categories.find((c) => c.name === "Fruits");
+
+  if (!softwareCategory || !fruitsCategory) {
+    throw new Error("Failed to create required categories");
   }
 
-  // Add sample orders
-  const sampleOrders: Array<InferInsertModel<typeof orders>> = [
-    {
+  // Seed products
+  const orangesProductResult = await db
+    .insert(products)
+    .values({
       id: createId(),
-      userId: adminUser[0].id,
-      stripeSessionId: "cs_test_" + createId(),
-      customerEmail: "customer1@example.com",
-      customerName: "John Doe",
-      customerPhone: "+1234567890",
-      requiresShipping: true,
-      shippingName: "John Doe",
-      shippingAddressLine1: "123 Main St",
-      shippingCity: "New York",
-      shippingState: "NY",
-      shippingPostalCode: "10001",
-      shippingCountry: "US",
-      billingAddressLine1: "123 Main St",
-      billingCity: "New York",
-      billingState: "NY",
-      billingPostalCode: "10001",
-      billingCountry: "US",
-      currency: "usd",
-      amountSubtotal: 14.99,
-      amountTotal: 15.99,
-      amountTax: 1.0,
-      amountShipping: 0,
-      paymentStatus: "paid",
-      shippingStatus: "delivered",
-      createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
-      updatedAt: new Date(),
-    },
-    {
+      name: "Oranges",
+      description: "Many kinds of delicious juicy oranges",
+      categoryId: fruitsCategory.id,
+      isLive: true,
+    })
+    .returning();
+
+  const demoProductResult = await db
+    .insert(products)
+    .values({
       id: createId(),
-      userId: adminUser[0].id,
-      stripeSessionId: "cs_test_" + createId(),
-      customerEmail: "customer2@example.com",
-      customerName: "Jane Smith",
-      customerPhone: "+1987654321",
-      requiresShipping: true,
-      shippingName: "Jane Smith",
-      shippingAddressLine1: "456 Oak Ave",
-      shippingCity: "Los Angeles",
-      shippingState: "CA",
-      shippingPostalCode: "90001",
-      shippingCountry: "US",
-      billingAddressLine1: "456 Oak Ave",
-      billingCity: "Los Angeles",
-      billingState: "CA",
-      billingPostalCode: "90001",
-      billingCountry: "US",
-      currency: "usd",
-      amountSubtotal: 24.99,
-      amountTotal: 26.99,
-      amountTax: 2.0,
-      amountShipping: 0,
-      paymentStatus: "pending",
-      shippingStatus: "pending",
-      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-      updatedAt: new Date(),
-    },
-  ];
+      name: "Digital Goods - Free Demo",
+      description: "Demo",
+      categoryId: softwareCategory.id,
+      isLive: true,
+    })
+    .returning();
 
-  const ordersResult = await db.insert(orders).values(sampleOrders).returning();
+  if (!orangesProductResult[0] || !demoProductResult[0]) {
+    throw new Error("Failed to create products");
+  }
 
-  // Add order items
-  const orderItemsData: Array<InferInsertModel<typeof orderItems>> =
-    ordersResult.flatMap((order) => [
+  const orangesProduct = orangesProductResult[0];
+  const demoProduct = demoProductResult[0];
+
+  // Seed variants for oranges
+  const orangeVariantsResult = await db
+    .insert(productVariants)
+    .values([
       {
         id: createId(),
-        orderId: order.id,
-        variantId: mandarinVariant.id,
-        quantity: 2,
-        unitPrice: 4.99,
-        subtotal: 9.98,
-        name: "Mandarin Oranges",
-        variantName: "Mandarin",
-        createdAt: new Date(),
+        productId: orangesProduct.id,
+        name: "Mandarin",
+        description: "small, with big flavor!",
+        price: 4.99,
+        stock: -1,
+        isDigital: false,
+        isLive: true,
+        stripeProductId: "prod_RutTKypkW9mJpm", // prod: "prod_RuGIZSP89oRjML"
+        attributes: JSON.stringify({}),
       },
       {
         id: createId(),
-        orderId: order.id,
-        variantId: bloodOrangeVariant.id,
-        quantity: 1,
-        unitPrice: 8.99,
-        subtotal: 8.99,
+        productId: orangesProduct.id,
         name: "Blood Orange",
-        variantName: "Blood Orange",
-        createdAt: new Date(),
+        description: "Unique tart taste",
+        price: 8.99,
+        stock: 5,
+        isDigital: false,
+        isLive: true,
+        stripeProductId: "prod_RutTrx9D5dTTx3", // prod: "prod_RuGHAsspDNY6q6"
+        attributes: JSON.stringify({}),
       },
-    ]);
+      {
+        id: createId(),
+        productId: orangesProduct.id,
+        name: "Free Oranges",
+        description: "Free oranges for the needy",
+        price: 0,
+        stock: -1,
+        isDigital: false,
+        isLive: true,
+        stripeProductId: "prod_RutWcHVdRMDarp", // prod: "prod_RuM5Kf2ftqdp7A"
+        attributes: JSON.stringify({}),
+      },
+    ])
+    .returning();
 
-  await db.insert(orderItems).values(orderItemsData);
+  // Seed variant for demo product
+  const demoVariantResult = await db
+    .insert(productVariants)
+    .values({
+      id: createId(),
+      productId: demoProduct.id,
+      name: "Demo",
+      description: "Demo digital product",
+      price: 0,
+      stock: -1,
+      isDigital: true,
+      isLive: true,
+      stripeProductId: "prod_RutX085K8SAIyv", // prod: "prod_RuUpEz67o5neJz"
+      attributes: JSON.stringify({}),
+    })
+    .returning();
+
+  if (!orangeVariantsResult[0] || !demoVariantResult[0]) {
+    throw new Error("Failed to create variants");
+  }
+
+  const orangeVariants = orangeVariantsResult;
+  const demoVariant = demoVariantResult[0];
+
+  // Verify we have all orange variants
+  if (!orangeVariants[0] || !orangeVariants[1] || !orangeVariants[2]) {
+    throw new Error("Failed to create all orange variants");
+  }
+
+  // Seed images for orange variants
+  await db.insert(variantImages).values([
+    {
+      id: createId(),
+      variantId: orangeVariants[0].id,
+      url: "https://www.shutterstock.com/shutterstock/photos/2053015835/display_1500/stock-photo-orange-with-sliced-and-green-leaves-isolated-on-white-background-2053015835.jpg",
+      title: "Mandarin",
+      order: 0,
+    },
+    {
+      id: createId(),
+      variantId: orangeVariants[1].id,
+      url: "https://motherwouldknow.com/wp-content/uploads/2014/01/20140127bloodorangecut.jpg",
+      title: "Blood Orange",
+      order: 0,
+    },
+    {
+      id: createId(),
+      variantId: orangeVariants[2].id,
+      url: "https://www.gardenzeus.com/wp-content/uploads/GZctorange-2.jpg",
+      title: "Free Oranges",
+      order: 0,
+    },
+  ]);
+
+  // Seed image for demo variant
+  await db.insert(variantImages).values({
+    id: createId(),
+    variantId: demoVariant.id,
+    url: "https://www.shutterstock.com/image-photo/igniting-innovation-harnessing-power-coding-600w-2425426569.jpg",
+    title: "Demo",
+    order: 0,
+  });
+
+  // Seed blog posts
+  await db.insert(posts).values([
+    {
+      title: "Welcome to Our Store",
+      slug: "welcome",
+      image:
+        "https://thumbs.dreamstime.com/b/blogging-blog-concepts-ideas-worktable-blogging-blog-concepts-ideas-white-worktable-110423482.jpg",
+      content:
+        "Welcome to our store! We're excited to serve you with the best products.",
+      excerpt: "A warm welcome to all our customers",
+      published: true,
+      authorId: adminUser[0].id,
+    },
+  ]);
 
   console.log("Database has been seeded");
 }

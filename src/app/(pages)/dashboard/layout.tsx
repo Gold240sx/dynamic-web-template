@@ -2,9 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Store, Package, Settings, FileText } from "lucide-react";
+import {
+  Store,
+  Package,
+  Settings,
+  FileText,
+  MessageSquare,
+  CheckSquare,
+} from "lucide-react";
 import { cn } from "~/lib/utils";
 import { Suspense } from "react";
+import { api } from "~/trpc/react";
+import { NotificationBadge } from "~/components/ui/notification-badge";
 
 const navigation = [
   {
@@ -21,6 +30,8 @@ const navigation = [
     name: "Orders",
     href: "/dashboard/orders",
     icon: Package,
+    showBadge: true,
+    badgeType: "orders",
   },
   {
     name: "Settings",
@@ -29,8 +40,34 @@ const navigation = [
   },
 ];
 
+const approvalNavigation = [
+  {
+    name: "Pending Comments",
+    href: "/dashboard/approvals/comments",
+    icon: MessageSquare,
+    showBadge: true,
+    badgeType: "comments",
+  },
+  {
+    name: "Pending Reviews",
+    href: "/dashboard/approvals/reviews",
+    icon: CheckSquare,
+    showBadge: true,
+    badgeType: "reviews",
+  },
+];
+
 function DashboardNav() {
   const pathname = usePathname();
+  const { data: notifications } = api.notifications.getUnviewedCounts.useQuery(
+    undefined,
+    { refetchInterval: 30000 }, // Refetch every 30 seconds
+  );
+
+  const getBadgeCount = (type: "comments" | "reviews" | "orders") => {
+    if (!notifications) return 0;
+    return notifications[type];
+  };
 
   return (
     <nav className="space-y-1 px-3 py-2">
@@ -38,19 +75,61 @@ function DashboardNav() {
         const isActive =
           pathname === item.href || pathname.startsWith(item.href + "/");
         return (
-          <Link
-            key={item.name}
-            href={item.href}
-            className={cn(
-              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-              isActive
-                ? "bg-zinc-800 text-white"
-                : "text-zinc-400 hover:bg-zinc-800 hover:text-white",
-            )}
-          >
-            <item.icon className="h-5 w-5" />
-            {item.name}
-          </Link>
+          <div key={item.name} className="relative">
+            <Link
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-base transition-colors",
+                isActive
+                  ? "bg-zinc-800 text-white"
+                  : "text-zinc-400 hover:bg-zinc-800 hover:text-white",
+              )}
+            >
+              <span className="relative inline-block pr-2">
+                <item.icon className="h-6 w-6" />
+                {item.showBadge && (
+                  <NotificationBadge
+                    count={getBadgeCount(
+                      item.badgeType as "comments" | "reviews" | "orders",
+                    )}
+                  />
+                )}
+              </span>
+              {item.name}
+            </Link>
+          </div>
+        );
+      })}
+
+      <div className="my-4 border-t border-zinc-800" />
+
+      {approvalNavigation.map((item) => {
+        const isActive =
+          pathname === item.href || pathname.startsWith(item.href + "/");
+        return (
+          <div key={item.name} className="relative">
+            <Link
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-base transition-colors",
+                isActive
+                  ? "bg-zinc-800 text-white"
+                  : "text-zinc-400 hover:bg-zinc-800 hover:text-white",
+              )}
+            >
+              <span className="relative inline-block">
+                <item.icon className="h-6 w-6" />
+                {item.showBadge && (
+                  <NotificationBadge
+                    count={getBadgeCount(
+                      item.badgeType as "comments" | "reviews" | "orders",
+                    )}
+                  />
+                )}
+              </span>
+              {item.name}
+            </Link>
+          </div>
         );
       })}
     </nav>
@@ -65,7 +144,7 @@ export default function DashboardLayout({
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
-      <div className="w-64 bg-zinc-900 text-white print:!hidden">
+      <div id="sidebar" className="w-64 bg-zinc-900 text-white print:!hidden">
         <div className="flex h-16 items-center px-6">
           <Link href="/dashboard" className="text-lg font-semibold">
             Dashboard

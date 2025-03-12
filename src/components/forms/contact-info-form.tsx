@@ -6,7 +6,6 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { api } from "~/trpc/react";
-import { motion, AnimatePresence } from "motion/react";
 import {
   Select,
   SelectContent,
@@ -14,61 +13,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Plus } from "lucide-react";
+import { AddressForm } from "../myComponents/address-form";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 
-const US_STATES = [
-  { value: "AL", label: "Alabama" },
-  { value: "AK", label: "Alaska" },
-  { value: "AZ", label: "Arizona" },
-  { value: "AR", label: "Arkansas" },
-  { value: "CA", label: "California" },
-  { value: "CO", label: "Colorado" },
-  { value: "CT", label: "Connecticut" },
-  { value: "DE", label: "Delaware" },
-  { value: "FL", label: "Florida" },
-  { value: "GA", label: "Georgia" },
-  { value: "HI", label: "Hawaii" },
-  { value: "ID", label: "Idaho" },
-  { value: "IL", label: "Illinois" },
-  { value: "IN", label: "Indiana" },
-  { value: "IA", label: "Iowa" },
-  { value: "KS", label: "Kansas" },
-  { value: "KY", label: "Kentucky" },
-  { value: "LA", label: "Louisiana" },
-  { value: "ME", label: "Maine" },
-  { value: "MD", label: "Maryland" },
-  { value: "MA", label: "Massachusetts" },
-  { value: "MI", label: "Michigan" },
-  { value: "MN", label: "Minnesota" },
-  { value: "MS", label: "Mississippi" },
-  { value: "MO", label: "Missouri" },
-  { value: "MT", label: "Montana" },
-  { value: "NE", label: "Nebraska" },
-  { value: "NV", label: "Nevada" },
-  { value: "NH", label: "New Hampshire" },
-  { value: "NJ", label: "New Jersey" },
-  { value: "NM", label: "New Mexico" },
-  { value: "NY", label: "New York" },
-  { value: "NC", label: "North Carolina" },
-  { value: "ND", label: "North Dakota" },
-  { value: "OH", label: "Ohio" },
-  { value: "OK", label: "Oklahoma" },
-  { value: "OR", label: "Oregon" },
-  { value: "PA", label: "Pennsylvania" },
-  { value: "RI", label: "Rhode Island" },
-  { value: "SC", label: "South Carolina" },
-  { value: "SD", label: "South Dakota" },
-  { value: "TN", label: "Tennessee" },
-  { value: "TX", label: "Texas" },
-  { value: "UT", label: "Utah" },
-  { value: "VT", label: "Vermont" },
-  { value: "VA", label: "Virginia" },
-  { value: "WA", label: "Washington" },
-  { value: "WV", label: "West Virginia" },
-  { value: "WI", label: "Wisconsin" },
-  { value: "WY", label: "Wyoming" },
-];
+const ADDRESS_TYPES = [
+  { value: "billing", label: "Billing" },
+  { value: "shipping", label: "Shipping" },
+  { value: "installation", label: "Installation" },
+  { value: "service", label: "Service" },
+] as const;
 
-interface BillingAddress {
+interface AddressInput {
+  firstName: string;
+  lastName: string;
   line1: string;
   line2?: string;
   city: string;
@@ -79,27 +37,30 @@ interface BillingAddress {
 }
 
 interface ContactInfoFormProps {
-  initialAddress?: BillingAddress;
+  initialName?: string;
   userId: string;
   className?: string;
 }
 
 export function ContactInfoForm({
-  initialAddress,
+  initialName,
   userId,
   className,
 }: ContactInfoFormProps) {
-  const [address, setAddress] = useState({
-    line1: initialAddress?.line1 ?? "",
-    line2: initialAddress?.line2 ?? "",
-    city: initialAddress?.city ?? "",
-    state: initialAddress?.state ?? "",
-    postalCode: initialAddress?.postalCode ?? "",
-    country: initialAddress?.country ?? "US",
-    phone: initialAddress?.phone ?? "",
-  });
+  const [name, setName] = useState(initialName ?? "");
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [selectedType, setSelectedType] =
+    useState<(typeof ADDRESS_TYPES)[number]["value"]>("billing");
 
-  const { mutate: updateUser, isPending } =
+  const { data: addresses, refetch: refetchAddresses } =
+    api.user.getAddresses.useQuery(
+      { userId },
+      {
+        enabled: !!userId,
+      },
+    );
+
+  const { mutate: updateUser, isPending: isUpdatingUser } =
     api.user.updateContactInfo.useMutation({
       onSuccess: () => {
         toast.success("Contact information updated successfully");
@@ -111,130 +72,162 @@ export function ContactInfoForm({
       },
     });
 
+  const { mutate: addAddress, isPending: isAddingAddress } =
+    api.user.addAddress.useMutation({
+      onSuccess: () => {
+        toast.success("Address added successfully");
+        setShowAddressForm(false);
+        void refetchAddresses();
+      },
+      onError: () => {
+        toast.error("Failed to add address", {
+          description: "Please try again later",
+        });
+      },
+    });
+
+  const { mutate: deleteAddress } = api.user.deleteAddress.useMutation({
+    onSuccess: () => {
+      toast.success("Address deleted successfully");
+      void refetchAddresses();
+    },
+    onError: () => {
+      toast.error("Failed to delete address", {
+        description: "Please try again later",
+      });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateUser({
       userId,
-      billingAddress: address,
+      name,
     });
   };
 
-  const showAdditionalFields = address.line1.length > 4;
+  const handleAddressSubmit = (address: AddressInput) => {
+    addAddress({
+      userId,
+      address: {
+        ...address,
+        type: selectedType,
+        name: `${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)} Address`,
+        isDefault: true,
+      },
+    });
+  };
 
   return (
-    <form onSubmit={handleSubmit} className={`space-y-4 ${className ?? ""}`}>
-      <div>
-        <Label htmlFor="phone">Phone Number</Label>
-        <Input
-          id="phone"
-          type="tel"
-          value={address.phone}
-          className="border-none !bg-zinc-800"
-          onChange={(e) => setAddress({ ...address, phone: e.target.value })}
-          placeholder="+1 (555) 555-5555"
-        />
-      </div>
-      <div>
-        <Label htmlFor="line1">Address Line 1</Label>
-        <Input
-          id="line1"
-          value={address.line1}
-          className="border-none !bg-zinc-800"
-          onChange={(e) => setAddress({ ...address, line1: e.target.value })}
-          placeholder="Street address"
-        />
-      </div>
+    <div className={`space-y-8 ${className ?? ""}`}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <Label htmlFor="name">Full Name</Label>
+          <Input
+            id="name"
+            value={name}
+            className="border-none !bg-zinc-800"
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your full name"
+          />
+        </div>
 
-      <AnimatePresence>
-        {showAdditionalFields && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="space-y-4"
+        <Button type="submit" disabled={isUpdatingUser} className="w-full">
+          {isUpdatingUser ? "Saving..." : "Save Contact Information"}
+        </Button>
+      </form>
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-medium">Addresses</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowAddressForm(true)}
           >
-            <div>
-              <Label htmlFor="line2">Address Line 2</Label>
-              <Input
-                id="line2"
-                value={address.line2}
-                className="border-none !bg-zinc-800"
-                onChange={(e) =>
-                  setAddress({ ...address, line2: e.target.value })
-                }
-                placeholder="Apartment, suite, etc."
-              />
-            </div>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Address
+          </Button>
+        </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="city">City</Label>
-                <Input
-                  id="city"
-                  className="border-none !bg-zinc-800"
-                  value={address.city}
-                  onChange={(e) =>
-                    setAddress({ ...address, city: e.target.value })
-                  }
-                  placeholder="City"
-                />
-              </div>
-              <div>
-                <Label htmlFor="state">State</Label>
+        {showAddressForm && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Add New Address</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-4">
+                <Label>Address Type</Label>
                 <Select
-                  value={address.state}
-                  onValueChange={(value: string) =>
-                    setAddress({ ...address, state: value })
+                  value={selectedType}
+                  onValueChange={(value) =>
+                    setSelectedType(
+                      value as (typeof ADDRESS_TYPES)[number]["value"],
+                    )
                   }
                 >
-                  <SelectTrigger id="state">
-                    <SelectValue placeholder="Select state" />
+                  <SelectTrigger>
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {US_STATES.map((state) => (
-                      <SelectItem key={state.value} value={state.value}>
-                        {state.label}
+                    {ADDRESS_TYPES.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="postalCode">Postal Code</Label>
-                <Input
-                  id="postalCode"
-                  className="border-none !bg-zinc-800"
-                  value={address.postalCode}
-                  onChange={(e) =>
-                    setAddress({ ...address, postalCode: e.target.value })
-                  }
-                  placeholder="Postal code"
-                />
-              </div>
-              <div>
-                <Label htmlFor="country">Country</Label>
-                <Input
-                  id="country"
-                  className="border-none !bg-zinc-800"
-                  value={address.country}
-                  onChange={(e) =>
-                    setAddress({ ...address, country: e.target.value })
-                  }
-                  placeholder="Country"
-                  disabled
-                />
-              </div>
-            </div>
-
-            <Button type="submit" disabled={isPending} className="w-full">
-              {isPending ? "Saving..." : "Save Contact Information"}
-            </Button>
-          </motion.div>
+              <AddressForm
+                onAddressChange={handleAddressSubmit}
+                className="[&_*]:border-none [&_input]:border-none [&_input]:!bg-zinc-800 [&_select]:border-none [&_select]:!bg-zinc-800"
+              />
+            </CardContent>
+          </Card>
         )}
-      </AnimatePresence>
-    </form>
+
+        <div className="space-y-4">
+          {addresses?.map((address) => (
+            <Card key={address.id}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">
+                    {address.name}{" "}
+                    {address.isDefault && (
+                      <span className="ml-2 text-xs text-zinc-500">
+                        (Default)
+                      </span>
+                    )}
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      deleteAddress({ userId, addressId: address.id })
+                    }
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <address className="not-italic">
+                  <p>
+                    {address.firstName} {address.lastName}
+                  </p>
+                  <p>{address.line1}</p>
+                  {address.line2 && <p>{address.line2}</p>}
+                  <p>
+                    {address.city}, {address.state} {address.postalCode}
+                  </p>
+                  <p>{address.country}</p>
+                  {address.phone && <p>{address.phone}</p>}
+                </address>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

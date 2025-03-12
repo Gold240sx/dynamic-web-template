@@ -1,10 +1,11 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure } from "../trpc";
+import { createTRPCRouter, publicProcedure, protectedProcedure } from "../trpc";
 import {
   products,
   productVariants,
   variantImages,
   productCategories,
+  productReviews,
 } from "~/server/db/schema";
 import { desc, eq, count, inArray, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -439,5 +440,57 @@ export const productRouter = createTRPCRouter({
             updatedAt: variant.updatedAt ?? new Date(),
           })),
       }));
+    }),
+
+  getPendingReviews: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.session?.user?.role || ctx.session.user.role !== "admin") {
+      return [];
+    }
+
+    const reviews = await ctx.db.query.productReviews.findMany({
+      where: eq(productReviews.isApproved, false),
+      with: {
+        user: {
+          columns: {
+            id: true,
+            name: true,
+            avatarUrl: true,
+          },
+        },
+        product: {
+          columns: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: (reviews) => [reviews.createdAt],
+    });
+
+    return reviews;
+  }),
+
+  updateReview: protectedProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        isApproved: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!ctx.session?.user?.role || ctx.session.user.role !== "admin") {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Only admins can update review status",
+        });
+      }
+
+      const review = await ctx.db
+        .update(productReviews)
+        .set({ isApproved: input.isApproved })
+        .where(eq(productReviews.id, input.id))
+        .returning();
+
+      return review[0];
     }),
 });

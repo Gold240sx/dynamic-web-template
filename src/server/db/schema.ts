@@ -1,7 +1,7 @@
 // Example model schema from the Drizzle docs
 // https://orm.drizzle.team/docs/sql-schema-declaration
 
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   index,
   int,
@@ -9,10 +9,14 @@ import {
   text,
   integer,
   type SQLiteTableFn,
+  primaryKey,
+  sqliteTable,
+  uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 import { createId } from "@paralleldrive/cuid2";
 import { type InferModel } from "drizzle-orm";
-import { relations } from "drizzle-orm";
+import { relations as oldRelations } from "drizzle-orm";
+import { nanoid } from "nanoid";
 
 /**
  * This is an example of how to use the multi-project schema feature of Drizzle ORM. Use the same
@@ -69,20 +73,28 @@ export const products = createTable(
 export const posts = createTable(
   "post",
   {
-    id: int("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
+    id: integer("id", { mode: "number" }).primaryKey({ autoIncrement: true }),
     title: text("title", { length: 256 }).notNull(),
     slug: text("slug", { length: 256 }).notNull().unique(),
     content: text("content").notNull(),
     excerpt: text("excerpt", { length: 512 }),
     image: text("image"),
-    published: int("published", { mode: "boolean" }).notNull().default(false),
+    published: integer("published", { mode: "boolean" })
+      .notNull()
+      .default(false),
     authorId: text("author_id").notNull(),
-    createdAt: int("created_at", { mode: "timestamp" })
+    likes: integer("likes", { mode: "number" }).notNull().default(0),
+    createdAt: integer("created_at", { mode: "timestamp" })
       .default(sql`(unixepoch())`)
       .notNull(),
-    updatedAt: int("updated_at", { mode: "timestamp" }).$onUpdate(
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$onUpdate(
       () => new Date(),
     ),
+    commentResponseType: text("comment_response_type", {
+      enum: ["admin", "all", "none"],
+    })
+      .notNull()
+      .default("all"),
   },
   (post) => ({
     slugIndex: index("slug_idx").on(post.slug),
@@ -241,6 +253,7 @@ export const orders = createTable(
     updatedAt: integer("updated_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
+    viewedAt: integer("viewed_at", { mode: "timestamp" }),
   },
   (table) => ({
     stripeSessionIdIdx: index("orders_stripe_session_id_idx").on(
@@ -285,25 +298,32 @@ export const users = createTable(
   {
     id: text("id")
       .primaryKey()
-      .$defaultFn(() => createId()),
-    email: text("email").notNull().unique(),
-    name: text("name").notNull(),
+      .$defaultFn(() => nanoid()),
+    name: text("name"),
+    email: text("email").notNull(),
     password: text("password"),
     avatarUrl: text("avatar_url"),
-    billingAddress: text("billing_address", { mode: "json" }),
-    paymentMethod: text("payment_method", { mode: "json" }),
     role: text("role", { enum: ["user", "admin"] })
-      .notNull()
-      .default("user"),
-    createdAt: int("created_at", { mode: "timestamp" })
-      .default(sql`(unixepoch())`)
+      .default("user")
       .notNull(),
-    updatedAt: int("updated_at", { mode: "timestamp" }).$onUpdate(
-      () => new Date(),
-    ),
+    canRespond: integer("can_respond", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    canComment: integer("can_comment", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    canReview: integer("can_review", { mode: "boolean" })
+      .notNull()
+      .default(true),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
   },
   (table) => ({
-    emailIdx: index("users_email_idx").on(table.email),
+    emailIdx: uniqueIndex("email_idx").on(table.email),
   }),
 );
 
@@ -456,5 +476,319 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
+  addresses: many(userAddresses),
   orders: many(orders),
+  blogComments: many(blogComments),
+  productReviews: many(productReviews),
+  companyReviews: many(companyReviews),
+  postLikes: many(postLikes),
 }));
+
+export const postLikes = createTable(
+  "post_likes",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    postId: integer("post_id", { mode: "number" })
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .default(sql`(unixepoch())`)
+      .notNull(),
+  },
+  (table) => ({
+    postUserIdx: index("post_likes_post_user_idx").on(
+      table.postId,
+      table.userId,
+    ),
+  }),
+);
+
+export const CommentResponseTypes = ["admin", "all", "none"] as const;
+export type CommentResponseType = (typeof CommentResponseTypes)[number];
+
+export const blogComments: ReturnType<typeof createTable> = createTable(
+  "blog_comments",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    content: text("content").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    postId: integer("post_id")
+      .notNull()
+      .references(() => posts.id),
+    parentId: text("parent_id").references(() => blogComments.id, {
+      onDelete: "cascade",
+    }),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    isApproved: integer("is_approved", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    isDraft: integer("is_draft", { mode: "boolean" }).notNull().default(false),
+    viewedAt: integer("viewed_at", { mode: "timestamp" }),
+  },
+  (table) => ({
+    postIdx: index("blog_comments_post_idx").on(table.postId),
+    userIdx: index("blog_comments_user_idx").on(table.userId),
+    parentIdx: index("blog_comments_parent_idx").on(table.parentId),
+  }),
+);
+
+export type BlogComment = typeof blogComments.$inferSelect;
+
+export const productReviews = createTable(
+  "product_reviews",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    rating: integer("rating", { mode: "number" }).notNull(),
+    isApproved: integer("is_approved", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .default(sql`(unixepoch())`)
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$onUpdate(
+      () => new Date(),
+    ),
+    viewedAt: integer("viewed_at", { mode: "timestamp" }),
+  },
+  (table) => ({
+    productIdx: index("product_reviews_product_idx").on(table.productId),
+    userIdx: index("product_reviews_user_idx").on(table.userId),
+  }),
+);
+
+export const companyReviews = createTable(
+  "company_reviews",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    rating: integer("rating", { mode: "number" }).notNull(),
+    isApproved: integer("is_approved", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .default(sql`(unixepoch())`)
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$onUpdate(
+      () => new Date(),
+    ),
+    viewedAt: integer("viewed_at", { mode: "timestamp" }),
+  },
+  (table) => ({
+    userIdx: index("company_reviews_user_idx").on(table.userId),
+  }),
+);
+
+export const postsRelations = relations(posts, ({ many }) => ({
+  comments: many(blogComments),
+  likes: many(postLikes),
+  reviews: many(productReviews),
+}));
+
+export const blogCommentsRelations = relations(blogComments, ({ one }) => ({
+  post: one(posts, {
+    fields: [blogComments.postId],
+    references: [posts.id],
+  }),
+  user: one(users, {
+    fields: [blogComments.userId],
+    references: [users.id],
+  }),
+}));
+
+export const postLikesRelations = relations(postLikes, ({ one }) => ({
+  post: one(posts, {
+    fields: [postLikes.postId],
+    references: [posts.id],
+  }),
+  user: one(users, {
+    fields: [postLikes.userId],
+    references: [users.id],
+  }),
+}));
+
+export const productReviewsRelations = relations(productReviews, ({ one }) => ({
+  product: one(products, {
+    fields: [productReviews.productId],
+    references: [products.id],
+  }),
+  user: one(users, {
+    fields: [productReviews.userId],
+    references: [users.id],
+  }),
+}));
+
+export const companyReviewsRelations = relations(companyReviews, ({ one }) => ({
+  user: one(users, {
+    fields: [companyReviews.userId],
+    references: [users.id],
+  }),
+}));
+
+export const productsRelations = relations(products, ({ many }) => ({
+  variants: many(productVariants),
+  reviews: many(productReviews),
+}));
+
+export const commentResponses = createTable(
+  "comment_responses",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    content: text("content").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    commentId: text("comment_id")
+      .notNull()
+      .references(() => blogComments.id),
+    responseType: text("response_type", { enum: ["adminOnly", "all"] })
+      .notNull()
+      .default("all"),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    isApproved: integer("is_approved", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    isDraft: integer("is_draft", { mode: "boolean" }).notNull().default(false),
+  },
+  (table) => ({
+    commentIdx: index("comment_responses_comment_idx").on(table.commentId),
+    userIdx: index("comment_responses_user_idx").on(table.userId),
+  }),
+);
+
+export const reviewResponses = createTable(
+  "review_responses",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => nanoid()),
+    content: text("content").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id),
+    reviewId: text("review_id")
+      .notNull()
+      .references(() => productReviews.id),
+    reviewType: text("review_type", { enum: ["product", "company"] }).notNull(),
+    responseType: text("response_type", { enum: ["adminOnly", "all"] })
+      .notNull()
+      .default("all"),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    isApproved: integer("is_approved", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    isDraft: integer("is_draft", { mode: "boolean" }).notNull().default(false),
+  },
+  (table) => ({
+    reviewIdx: index("review_responses_review_idx").on(table.reviewId),
+    userIdx: index("review_responses_user_idx").on(table.userId),
+  }),
+);
+
+export const commentResponsesRelations = relations(
+  commentResponses,
+  ({ one }) => ({
+    comment: one(blogComments, {
+      fields: [commentResponses.commentId],
+      references: [blogComments.id],
+    }),
+    user: one(users, {
+      fields: [commentResponses.userId],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const reviewResponsesRelations = relations(
+  reviewResponses,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [reviewResponses.userId],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const userAddresses = createTable(
+  "user_addresses",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(), // e.g. "Home", "Office", "Solar Installation Site"
+    firstName: text("first_name").notNull(),
+    lastName: text("last_name").notNull(),
+    line1: text("line1").notNull(),
+    line2: text("line2"),
+    city: text("city").notNull(),
+    state: text("state").notNull(),
+    postalCode: text("postal_code").notNull(),
+    country: text("country").notNull(),
+    phone: text("phone"),
+    isDefault: integer("is_default", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    type: text("type", {
+      enum: ["billing", "shipping", "installation", "service"],
+    })
+      .notNull()
+      .default("billing"),
+    metadata: text("metadata", { mode: "json" }), // For storing additional type-specific data
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    userIdIdx: index("user_addresses_user_id_idx").on(table.userId),
+    defaultIdx: index("user_addresses_default_idx").on(
+      table.userId,
+      table.type,
+      table.isDefault,
+    ),
+  }),
+);

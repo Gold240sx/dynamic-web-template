@@ -14,14 +14,5 @@ export async function GET() {
     where: eq(users.id, userId.value),
   });
 
-  if (typeof user?.billingAddress === "string") {
-    try {
-      user.billingAddress = JSON.parse(user.billingAddress);
-    } catch (error) {
-      console.error("Error parsing billing address:", error);
-      user.billingAddress = null;
-    }
-  }
-
   return Response.json({ user });
 }

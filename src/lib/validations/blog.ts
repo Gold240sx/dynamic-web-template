@@ -10,6 +10,7 @@ export const blogFormSchema = z.object({
     .string()
     .max(512, "Excerpt must be less than 512 characters")
     .optional(),
+  image: z.string().url("Image must be a valid URL").optional(),
   published: z.boolean().default(false),
 });
 

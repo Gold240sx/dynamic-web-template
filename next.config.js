@@ -52,6 +52,10 @@ const config = {
         protocol: "https",
         hostname: "d1wqzb5bdbcre6.cloudfront.net",
       },
+      {
+        protocol: "https",
+        hostname: "thumbs.dreamstime.com",
+      },
     ],
   },
 };

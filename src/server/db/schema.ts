@@ -74,6 +74,7 @@ export const posts = createTable(
     slug: text("slug", { length: 256 }).notNull().unique(),
     content: text("content").notNull(),
     excerpt: text("excerpt", { length: 512 }),
+    image: text("image"),
     published: int("published", { mode: "boolean" }).notNull().default(false),
     authorId: text("author_id").notNull(),
     createdAt: int("created_at", { mode: "timestamp" })

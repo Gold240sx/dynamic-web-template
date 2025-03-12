@@ -11,6 +11,7 @@ export const postRouter = createTRPCRouter({
         title: z.string().min(3).max(256),
         content: z.string().min(10),
         excerpt: z.string().max(512).optional(),
+        image: z.string().url().optional(),
         published: z.boolean().default(false),
       }),
     )
@@ -23,6 +24,7 @@ export const postRouter = createTRPCRouter({
           title: input.title,
           content: input.content,
           excerpt: input.excerpt,
+          image: input.image,
           published: input.published,
           slug,
           authorId: "system", // TODO: Replace with actual user ID when auth is implemented
@@ -39,6 +41,7 @@ export const postRouter = createTRPCRouter({
         title: z.string().min(3).max(256),
         content: z.string().min(10),
         excerpt: z.string().max(512).optional(),
+        image: z.string().url().optional(),
         published: z.boolean(),
       }),
     )
@@ -51,6 +54,7 @@ export const postRouter = createTRPCRouter({
           title: input.title,
           content: input.content,
           excerpt: input.excerpt,
+          image: input.image,
           published: input.published,
           slug,
           updatedAt: new Date(),
@@ -74,12 +78,19 @@ export const postRouter = createTRPCRouter({
       const post = await ctx.db
         .select()
         .from(posts)
-        .where(eq(posts.id, input.id));
-      return post[0];
+        .where(eq(posts.id, input.id))
+        .then((res) => res[0]);
+
+      return post;
     }),
 
   getAllPosts: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db.select().from(posts).orderBy(desc(posts.createdAt));
+    const allPosts = await ctx.db
+      .select()
+      .from(posts)
+      .orderBy(desc(posts.createdAt));
+
+    return allPosts;
   }),
 
   getLatest: publicProcedure.query(async ({ ctx }) => {
@@ -98,7 +109,9 @@ export const postRouter = createTRPCRouter({
       const post = await ctx.db
         .select()
         .from(posts)
-        .where(eq(posts.slug, input.slug));
-      return post[0];
+        .where(eq(posts.slug, input.slug))
+        .then((res) => res[0]);
+
+      return post;
     }),
 });

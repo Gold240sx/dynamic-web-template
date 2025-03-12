@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { formatDate } from "~/lib/utils";
 import { createCaller } from "~/server/api/root";
 import { createTRPCContext } from "~/server/api/trpc";
 import { generateMetadata } from "../../../../components/pages/blog/metadata";
+import { BlogShareButton } from "~/components/pages/blog/blog-share-button";
 
 export const dynamic = "force-dynamic";
 
@@ -43,8 +45,24 @@ export default async function BlogPostPage({
       </nav>
 
       <article>
+        {post.image && (
+          <div className="mb-8 aspect-video w-full overflow-hidden rounded-lg">
+            <Image
+              src={post.image}
+              alt={post.title}
+              width={1200}
+              height={675}
+              className="h-full w-full object-cover"
+              priority
+            />
+          </div>
+        )}
+
         <header className="mb-8">
-          <h1 className="mb-2 text-4xl font-bold">{post.title}</h1>
+          <div className="mb-2 flex items-center justify-between">
+            <h1 className="text-4xl font-bold">{post.title}</h1>
+            <BlogShareButton title={post.title} excerpt={post.excerpt} />
+          </div>
           <div className="text-muted-foreground flex items-center gap-x-4 text-sm">
             <time dateTime={post.createdAt.toISOString()}>
               {formatDate(post.createdAt)}

@@ -37,6 +37,7 @@ export default function BlogFormContent({ postId }: BlogFormContentProps) {
       title: "",
       content: "",
       excerpt: "",
+      image: "",
       published: draft ? false : true,
     },
   });
@@ -72,6 +73,7 @@ export default function BlogFormContent({ postId }: BlogFormContentProps) {
         title: post.title,
         content: post.content,
         excerpt: post.excerpt ?? "",
+        image: post.image ?? "",
         published: post.published,
       });
     }
@@ -120,6 +122,20 @@ export default function BlogFormContent({ postId }: BlogFormContentProps) {
 
           <FormField
             control={form.control}
+            name="image"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Featured Image URL (Optional)</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter image URL" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
             name="content"
             render={({ field }) => (
               <FormItem>
@@ -160,9 +176,9 @@ export default function BlogFormContent({ postId }: BlogFormContentProps) {
             render={({ field }) => (
               <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                 <div className="space-y-0.5">
-                  <FormLabel className="text-base">Publish</FormLabel>
+                  <FormLabel className="text-base">Published</FormLabel>
                   <div className="text-muted-foreground text-sm">
-                    Make this post public
+                    Make this post visible to the public
                   </div>
                 </div>
                 <FormControl>
@@ -175,14 +191,8 @@ export default function BlogFormContent({ postId }: BlogFormContentProps) {
             )}
           />
 
-          <Button type="submit" className="w-full" disabled={isPending}>
-            {isPending
-              ? postId
-                ? "Updating..."
-                : "Creating..."
-              : postId
-                ? "Update Post"
-                : "Create Post"}
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Saving..." : postId ? "Update Post" : "Create Post"}
           </Button>
         </form>
       </Form>

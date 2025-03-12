@@ -1,0 +1,1 @@
+ALTER TABLE `server-client-t3-blog_post` ADD `image` text;

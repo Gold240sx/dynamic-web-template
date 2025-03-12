@@ -28,11 +28,24 @@ export async function generateMetadata({
       description: post.excerpt ?? `Read ${post.title} on our blog`,
       type: "article",
       publishedTime: post.createdAt.toISOString(),
+      ...(post.image && {
+        images: [
+          {
+            url: post.image,
+            width: 1200,
+            height: 675,
+            alt: post.title,
+          },
+        ],
+      }),
     },
     twitter: {
       card: "summary_large_image",
       title: post.title,
       description: post.excerpt ?? `Read ${post.title} on our blog`,
+      ...(post.image && {
+        images: [post.image],
+      }),
     },
   };
 }

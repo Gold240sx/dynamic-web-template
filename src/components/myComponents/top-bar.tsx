@@ -1,190 +1,134 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import { useState, useEffect, useRef, type FC } from "react";
-import Link from "next/link";
+import { useCallback, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useNuqsString } from "~/lib/hooks/useNuqs";
+import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import { cn } from "~/lib/utils";
+import { CartButton } from "./cart-button";
 import { api } from "~/trpc/react";
-import { useSearchParams } from "next/navigation";
-import { useQueryState } from "nuqs";
-import CartItemButton from "./CartItemButton";
+import Link from "next/link";
 
 interface TopBarProps {
-  cartItemCount: number;
-  onCartClick: () => void;
+  cartItemCount?: number;
+  onCartClick?: () => void;
   onSearch?: (query: string) => void;
-  onCategoryChange?: (category: string) => void;
+  onCategoryChange?: (category: string) => Promise<void>;
   selectedCategory?: string;
   showFilters?: boolean;
 }
 
-export const TopBar: FC<TopBarProps> = ({
-  cartItemCount,
-  onCartClick,
-  onSearch,
-  onCategoryChange,
-  selectedCategory = "all",
-  showFilters = false,
-}) => {
-  const searchParams = useSearchParams();
+export function TopBar({ cartItemCount = 0, onCartClick }: TopBarProps) {
+  const [searchQuery, setSearchQuery] = useNuqsString("q", "");
+  const [category, setCategory] = useNuqsString("category", "all");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useQueryState("q");
-  const [searchValue, setSearchValue] = useState(searchQuery ?? "");
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const pathname = usePathname();
+  const { data: categories = [] } = api.category.all.useQuery();
 
-  const { data: categories } = api.category.all.useQuery();
+  const isShopPage = pathname === "/shop";
+  const isProductPage = pathname.startsWith("/shop/") && pathname !== "/shop";
 
-  // Focus input when search is opened
-  useEffect(() => {
-    if (isSearchOpen) {
-      searchInputRef.current?.focus();
-    }
-  }, [isSearchOpen]);
+  const handleSearchSubmit = useCallback(
+    (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+    },
+    [],
+  );
 
-  // Sync with URL params
-  useEffect(() => {
-    const q = searchParams.get("q");
-    if (q !== null) {
-      setIsSearchOpen(true);
-      setSearchValue(q);
-    } else {
-      setSearchValue("");
-    }
-  }, [searchParams]);
+  const handleSearchChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      await setSearchQuery(value || "");
+    },
+    [setSearchQuery],
+  );
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
-      setIsSearchOpen(false);
-      searchInputRef.current?.blur();
-      onSearch?.("");
-    } else if (e.key === "Enter") {
-      onSearch?.(searchValue);
-    }
-  };
+  const handleClearSearch = useCallback(async () => {
+    await setSearchQuery("");
+    setIsSearchOpen(false);
+  }, [setSearchQuery]);
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchValue(value);
-    void setSearchQuery(value || null);
-    onSearch?.(value);
-  };
-
-  const clearSearch = (e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    setSearchValue("");
-    void setSearchQuery(null);
-    onSearch?.("");
-  };
-
-  const handleBlur = (e: React.FocusEvent) => {
-    // Check if the related target is the search button or clear button
-    const isSearchButton = (e.relatedTarget as HTMLElement)?.closest(
-      "[data-search-button]",
-    );
-    const isClearButton = (e.relatedTarget as HTMLElement)?.closest(
-      "[data-clear-button]",
-    );
-
-    if (!isSearchButton && !isClearButton) {
-      setIsSearchOpen(false);
-    }
-  };
-
-  const handleCategoryClick = (categoryId: string) => {
-    if (onCategoryChange) {
-      onCategoryChange(categoryId);
-    }
-  };
+  const handleCategoryClick = useCallback(
+    async (newCategory: string) => {
+      await setCategory(newCategory);
+    },
+    [setCategory],
+  );
 
   return (
-    <div className="sticky top-0 z-40 w-full border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 print:!hidden">
-      <div className="flex h-12 items-center justify-between px-4">
-        <Link
-          href="/shop"
-          className="text-lg font-semibold tracking-tight hover:opacity-80"
-        >
-          Store
-        </Link>
-        {showFilters && (
-          <div className="scrollbar-none flex flex-1 items-center justify-center gap-6 overflow-x-auto px-8">
-            <button
-              type="button"
-              className={`whitespace-nowrap transition-colors ${
-                selectedCategory === "all"
-                  ? "text-sm font-medium text-zinc-900 dark:text-white"
-                  : "text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-              }`}
-              onClick={() => handleCategoryClick("all")}
-            >
-              All
-            </button>
-            {categories?.map((category) => (
-              <button
-                type="button"
-                key={category.id}
-                className={`whitespace-nowrap transition-colors ${
-                  selectedCategory === category.id
-                    ? "text-sm font-medium text-zinc-900 dark:text-white"
-                    : "text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-                }`}
-                onClick={() => handleCategoryClick(category.id)}
+    <div className="bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 w-full border-b backdrop-blur">
+      <div className="container flex h-14 items-center">
+        <div className="mr-4 flex">
+          <Link href="/shop" className="mr-6 flex items-center space-x-2">
+            <span className="font-bold">Shop</span>
+          </Link>
+          {isShopPage && (
+            <nav className="flex items-center space-x-2">
+              <Button
+                variant={category === "all" ? "default" : "ghost"}
+                onClick={() => void handleCategoryClick("all")}
+                className="h-8"
               >
-                {category.name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className="flex shrink-0 items-center gap-4">
-          {onSearch && (
-            <div className="relative">
-              {isSearchOpen && (
-                <div className="absolute right-0 top-12 z-50 w-72 rounded-lg border border-zinc-200 bg-white p-2 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
-                  <div className="relative">
-                    <input
-                      ref={searchInputRef}
-                      type="text"
-                      value={searchValue}
-                      onChange={handleSearchChange}
-                      onKeyDown={handleKeyPress}
-                      onBlur={handleBlur}
+                All
+              </Button>
+              {categories.map((cat) => (
+                <Button
+                  key={cat.id}
+                  variant={category === cat.id ? "default" : "ghost"}
+                  onClick={() => void handleCategoryClick(cat.id)}
+                  className="h-8"
+                >
+                  {cat.name}
+                </Button>
+              ))}
+            </nav>
+          )}
+        </div>
+        <div className="flex flex-1 items-center justify-end space-x-2">
+          <div className="flex items-center space-x-2">
+            {isShopPage && (
+              <div className="relative">
+                {isSearchOpen ? (
+                  <form
+                    onSubmit={handleSearchSubmit}
+                    className="flex items-center"
+                  >
+                    <Input
+                      type="search"
                       placeholder="Search products..."
-                      className="w-[460px] rounded-md border border-zinc-200 bg-transparent px-3 py-2 text-sm placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-900 dark:border-zinc-800 dark:placeholder:text-zinc-400 dark:focus:ring-white"
+                      className="h-9 w-[200px] pr-12"
+                      value={searchQuery}
+                      onChange={(e) => void handleSearchChange(e)}
                     />
-                    {searchValue && (
-                      <button
+                    {searchQuery && (
+                      <Button
                         type="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault(); // Prevent blur from firing before click
-                          clearSearch();
-                        }}
-                        data-clear-button
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        variant="ghost"
+                        onClick={() => void handleClearSearch()}
+                        className="absolute right-0 top-0 h-9 w-9 px-2"
                       >
                         <X className="h-4 w-4" />
-                      </button>
+                      </Button>
                     )}
-                  </div>
-                </div>
-              )}
-              <button
-                type="button"
-                data-search-button
-                onClick={() => setIsSearchOpen(!isSearchOpen)}
-                className="rounded-lg p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-              >
-                <Search className="h-4 w-4" />
-              </button>
-            </div>
-          )}
-          <div>
-            <CartItemButton
-              cartItemCount={cartItemCount}
-              onCartClick={onCartClick}
-            />
+                  </form>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsSearchOpen(true)}
+                    className="h-9 w-9"
+                  >
+                    <Search className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+            )}
+            <CartButton count={cartItemCount} onClick={onCartClick} />
           </div>
         </div>
       </div>
     </div>
   );
-};
+}

@@ -1,23 +1,20 @@
-import { useSearchParams } from "next/navigation";
-import { useCallback } from "react";
+"use client";
 
-export function useNuqs<T>(key: string, defaultValue: T) {
-  const searchParams = useSearchParams();
-  const value = (searchParams.get(key) ?? defaultValue) as T;
+import {
+  useQueryState,
+  parseAsString,
+  parseAsInteger,
+  parseAsBoolean,
+} from "nuqs";
 
-  const setValue = useCallback(
-    (newValue: T) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (newValue === defaultValue) {
-        params.delete(key);
-      } else {
-        params.set(key, String(newValue));
-      }
-      // Update URL without reloading the page
-      window.history.replaceState(null, "", `?${params.toString()}`);
-    },
-    [defaultValue, key, searchParams],
-  );
+export function useNuqsBoolean(key: string, defaultValue: boolean) {
+  return useQueryState(key, parseAsBoolean.withDefault(defaultValue));
+}
 
-  return [value, setValue] as const;
+export function useNuqsNumber(key: string, defaultValue: number) {
+  return useQueryState(key, parseAsInteger.withDefault(defaultValue));
+}
+
+export function useNuqsString(key: string, defaultValue: string) {
+  return useQueryState(key, parseAsString.withDefault(defaultValue));
 }

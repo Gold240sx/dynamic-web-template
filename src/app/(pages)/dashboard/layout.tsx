@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Store, Package, Settings, FileText } from "lucide-react";
 import { cn } from "~/lib/utils";
+import { Suspense } from "react";
 
 const navigation = [
   {
@@ -28,13 +29,39 @@ const navigation = [
   },
 ];
 
+function DashboardNav() {
+  const pathname = usePathname();
+
+  return (
+    <nav className="space-y-1 px-3 py-2">
+      {navigation.map((item) => {
+        const isActive =
+          pathname === item.href || pathname.startsWith(item.href + "/");
+        return (
+          <Link
+            key={item.name}
+            href={item.href}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+              isActive
+                ? "bg-zinc-800 text-white"
+                : "text-zinc-400 hover:bg-zinc-800 hover:text-white",
+            )}
+          >
+            <item.icon className="h-5 w-5" />
+            {item.name}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
@@ -44,27 +71,9 @@ export default function DashboardLayout({
             Dashboard
           </Link>
         </div>
-        <nav className="space-y-1 px-3 py-2">
-          {navigation.map((item) => {
-            const isActive =
-              pathname === item.href || pathname.startsWith(item.href + "/");
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                  isActive
-                    ? "bg-zinc-800 text-white"
-                    : "text-zinc-400 hover:bg-zinc-800 hover:text-white",
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.name}
-              </Link>
-            );
-          })}
-        </nav>
+        <Suspense fallback={<div className="px-3 py-2">Loading...</div>}>
+          <DashboardNav />
+        </Suspense>
       </div>
 
       {/* Main content */}

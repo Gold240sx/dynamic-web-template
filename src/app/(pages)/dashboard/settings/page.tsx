@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import SettingsContent from "../../../../components/pages/settings/settings-content";
 
+export const dynamic = "force-dynamic";
+
 export default function SettingsPage() {
   return (
     <Suspense

@@ -136,3 +136,7 @@ Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/ver
 [ ] Even though items may be limited to 1, it still allows us to keep adding more by clicking the add to cart button. Same with items with limited stock. The quantity is locked but we can still keep clicking the add to cart button.
 [ ] Need to implement an inventory management system.
 [ ] Ability to cancel orders.
+
+## Minor issues
+
+[ ] Shop searchbar isn't searching based upon all parameters ( name, description, category, variant name, variant description)

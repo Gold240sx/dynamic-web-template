@@ -26,6 +26,21 @@ export function StoreContent() {
   const { data: categories = [] } = api.category.all.useQuery();
   console.log("Categories:", categories);
 
+  // Log all products with their category info
+  console.log(
+    "Products with categories:",
+    products.map((product) => ({
+      id: product.id,
+      name: product.name,
+      categoryId: product.categoryId,
+      foundCategoryName:
+        categories.find((c) => c.id === product.categoryId)?.name ??
+        "Uncategorized",
+      selectedCategory,
+      allCategories: categories.map((c) => ({ id: c.id, name: c.name })),
+    })),
+  );
+
   const handleSearch = useCallback(
     async (query: string) => {
       try {
@@ -49,19 +64,45 @@ export function StoreContent() {
   );
 
   const filteredProducts = products.filter((product) => {
+    const productCategoryName =
+      categories.find((c) => c.id === product.categoryId)?.name ??
+      "Uncategorized";
+
+    console.log("Product:", {
+      id: product.id,
+      name: product.name,
+      categoryId: product.categoryId,
+      foundCategoryName: productCategoryName,
+      selectedCategory,
+      allCategories: categories.map((c) => ({ id: c.id, name: c.name })),
+    });
+
     const matchesSearch =
       !searchQuery ||
       product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       product.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.variants.some((variant) =>
-        variant.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      productCategoryName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.variants.some(
+        (variant) =>
+          variant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (variant.description?.toLowerCase() ?? "").includes(
+            searchQuery.toLowerCase(),
+          ),
       );
 
     const matchesCategory =
       !selectedCategory ||
       selectedCategory === "all" ||
-      product.category ===
-        categories.find((c) => c.id === selectedCategory)?.name;
+      categories.find((c) => c.id === selectedCategory)?.name ===
+        productCategoryName;
+
+    console.log("Matches:", {
+      matchesSearch,
+      matchesCategory,
+      searchQuery,
+      selectedCategory,
+      productCategoryName,
+    });
 
     return matchesSearch && matchesCategory;
   });

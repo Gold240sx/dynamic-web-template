@@ -4,7 +4,7 @@ import { TopBar } from "~/components/myComponents/top-bar";
 import { CartDrawer } from "~/components/myComponents/cart-drawer";
 import { useStore } from "~/context/store-context";
 import { useState, useCallback, useEffect } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useQueryState } from "nuqs";
 
 interface StoreHeaderProps {
@@ -24,17 +24,8 @@ export function StoreHeader({
     parse: (value) => value === "true",
   });
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [category, setCategory] = useQueryState("category");
   const isStoreRoute = pathname === "/shop" || pathname === "/dashboard/store";
-
-  // Check for cartOpen parameter on mount
-  useEffect(() => {
-    const cartOpen = searchParams.get("cartOpen");
-    if (cartOpen === "true") {
-      void setIsOpen(true);
-    }
-  }, [searchParams, setIsOpen]);
 
   const handleSearch = useCallback(
     (query: string) => {

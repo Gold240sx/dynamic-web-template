@@ -10,11 +10,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useQueryState } from "nuqs";
 
 const signInSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -27,10 +28,8 @@ interface ErrorResponse {
   error: string;
 }
 
-export default function SignInContent() {
-  const searchParams = useSearchParams();
+function SignInForm({ redirectTo }: { redirectTo: string }) {
   const router = useRouter();
-  const redirectTo = searchParams.get("redirectTo") ?? "/dashboard";
   const [error, setError] = useState<string | null>(null);
 
   const {
@@ -68,6 +67,49 @@ export default function SignInContent() {
   };
 
   return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder="Enter your email"
+          className="border-none !bg-zinc-800"
+          {...register("email")}
+          aria-invalid={!!errors.email}
+        />
+        {errors.email && (
+          <p className="text-sm text-red-500">{errors.email.message}</p>
+        )}
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          type="password"
+          placeholder="Enter your password"
+          className="border-none !bg-zinc-800"
+          {...register("password")}
+          aria-invalid={!!errors.password}
+        />
+        {errors.password && (
+          <p className="text-sm text-red-500">{errors.password.message}</p>
+        )}
+      </div>
+      {error && (
+        <div className="rounded-md bg-red-50 p-4">
+          <p className="text-sm text-red-500">{error}</p>
+        </div>
+      )}
+      <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {isSubmitting ? "Signing in..." : "Sign In"}
+      </Button>
+    </form>
+  );
+}
+
+function SignInCard({ redirectTo }: { redirectTo: string }) {
+  return (
     <div className="container mx-auto flex h-screen items-center justify-center">
       <Card className="w-[400px]">
         <CardHeader>
@@ -77,48 +119,21 @@ export default function SignInContent() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                className="border-none !bg-zinc-800"
-                {...register("email")}
-                aria-invalid={!!errors.email}
-              />
-              {errors.email && (
-                <p className="text-sm text-red-500">{errors.email.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                className="border-none !bg-zinc-800"
-                {...register("password")}
-                aria-invalid={!!errors.password}
-              />
-              {errors.password && (
-                <p className="text-sm text-red-500">
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
-            {error && (
-              <div className="rounded-md bg-red-50 p-4">
-                <p className="text-sm text-red-500">{error}</p>
-              </div>
-            )}
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Signing in..." : "Sign In"}
-            </Button>
-          </form>
+          <SignInForm redirectTo={redirectTo} />
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function SignInContent() {
+  const [redirectTo] = useQueryState("redirectTo", {
+    defaultValue: "/dashboard",
+  });
+
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignInCard redirectTo={redirectTo} />
+    </Suspense>
   );
 }

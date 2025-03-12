@@ -46,11 +46,11 @@ const shippingSettingsSchema = z.object({
 type GeneralSettingsFormData = z.infer<typeof generalSettingsSchema>;
 type ShippingSettingsFormData = z.infer<typeof shippingSettingsSchema>;
 
-function SettingsContentInner() {
-  const [activeTab, setActiveTab] = useQueryState("tab", {
+function SettingsForm({ activeTab }: { activeTab: string }) {
+  const { toast } = useToast();
+  const [, setActiveTab] = useQueryState("tab", {
     defaultValue: "general",
   });
-  const { toast } = useToast();
 
   const generalForm = useForm<GeneralSettingsFormData>({
     resolver: zodResolver(generalSettingsSchema),
@@ -99,7 +99,7 @@ function SettingsContentInner() {
         </p>
       </div>
 
-      <Tabs value={activeTab ?? "general"} onValueChange={handleTabChange}>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList className="mb-8">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="shipping">Shipping</TabsTrigger>
@@ -282,20 +282,13 @@ function SettingsContentInner() {
 }
 
 export default function SettingsContent() {
+  const [activeTab] = useQueryState("tab", {
+    defaultValue: "general",
+  });
+
   return (
-    <Suspense
-      fallback={
-        <div className="container mx-auto py-8">
-          <div className="mb-8">
-            <h1 className="text-2xl font-bold">Loading Settings...</h1>
-            <p className="text-muted-foreground mt-2">
-              Please wait while we load your settings
-            </p>
-          </div>
-        </div>
-      }
-    >
-      <SettingsContentInner />
+    <Suspense fallback={<div>Loading...</div>}>
+      <SettingsForm activeTab={activeTab} />
     </Suspense>
   );
 }

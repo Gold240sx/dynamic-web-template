@@ -1,0 +1,9 @@
+---
+description: Use pnpm
+globs: 
+alwaysApply: false
+---
+
+# Your rule content
+
+- if a node package is ever to need to be installed, don't install with npm. use pnpm.

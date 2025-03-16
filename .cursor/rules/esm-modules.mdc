@@ -1,0 +1,9 @@
+---
+description: refactor requires to esm modules.
+globs: 
+alwaysApply: false
+---
+
+# Your rule content
+
+- refactor any require("") to esm module syntax import {xxx} from "xxx" or import xxx from "xxx"

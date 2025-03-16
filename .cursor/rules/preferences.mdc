@@ -1,0 +1,11 @@
+---
+description: preferences
+globs: 
+alwaysApply: false
+---
+
+# Your rule content
+
+- Always use Nuqs State management instead of useState
+- Always prefer Server-rendered pages over client rendered pages.
+- Call funsctions directly in pages to prevent having to use UseEffect.

@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { Star } from "lucide-react";
+import { Star, Loader2 } from "lucide-react";
 import type { RouterOutputs } from "~/trpc/shared";
 import type { productReviews } from "~/server/db/schema";
 import type { InferSelectModel } from "drizzle-orm";
@@ -47,7 +47,9 @@ type ProductReviewWithRelations =
 type CompanyReviewWithRelations =
   RouterOutputs["company"]["getPendingReviews"][number];
 
-function PendingReviews() {
+export const dynamic = "force-dynamic";
+
+function PendingReviewsContent() {
   const [isPending, startTransition] = useTransition();
   const utils = api.useContext();
 
@@ -99,7 +101,7 @@ function PendingReviews() {
 
       <TabsContent value="product" className="space-y-4">
         {!productReviews?.length ? (
-          <div className="text-muted-foreground text-center">
+          <div className="text-center text-muted-foreground">
             No pending product reviews to review.
           </div>
         ) : (
@@ -121,7 +123,7 @@ function PendingReviews() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold">{review.user.name}</span>
-                      <span className="text-muted-foreground text-sm">
+                      <span className="text-sm text-muted-foreground">
                         {formatDistanceToNow(new Date(review.createdAt), {
                           addSuffix: true,
                         })}
@@ -135,7 +137,7 @@ function PendingReviews() {
                         />
                       ))}
                     </div>
-                    <p className="text-muted-foreground mt-1">
+                    <p className="mt-1 text-muted-foreground">
                       {review.content}
                     </p>
                   </div>
@@ -168,7 +170,7 @@ function PendingReviews() {
 
       <TabsContent value="company" className="space-y-4">
         {!companyReviews?.length ? (
-          <div className="text-muted-foreground text-center">
+          <div className="text-center text-muted-foreground">
             No pending company reviews to review.
           </div>
         ) : (
@@ -188,7 +190,7 @@ function PendingReviews() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold">{review.user.name}</span>
-                      <span className="text-muted-foreground text-sm">
+                      <span className="text-sm text-muted-foreground">
                         {formatDistanceToNow(new Date(review.createdAt), {
                           addSuffix: true,
                         })}
@@ -202,7 +204,7 @@ function PendingReviews() {
                         />
                       ))}
                     </div>
-                    <p className="text-muted-foreground mt-1">
+                    <p className="mt-1 text-muted-foreground">
                       {review.content}
                     </p>
                   </div>
@@ -236,13 +238,33 @@ function PendingReviews() {
   );
 }
 
-export default function ReviewsApprovalPage() {
+function PendingReviews() {
+  return (
+    <Suspense fallback={<div>Loading pending reviews...</div>}>
+      <PendingReviewsContent />
+    </Suspense>
+  );
+}
+
+function ReviewsApprovalPageContent() {
   return (
     <div className="container mx-auto py-8">
       <h1 className="mb-8 text-3xl font-bold">Pending Reviews</h1>
-      <Suspense fallback={<div>Loading...</div>}>
-        <PendingReviews />
-      </Suspense>
+      <PendingReviews />
     </div>
+  );
+}
+
+export default function ReviewsApprovalPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[400px] w-full items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
+      <ReviewsApprovalPageContent />
+    </Suspense>
   );
 }

@@ -1,0 +1,10 @@
+---
+description: Never Change the contents of any file called .env
+globs: .env
+alwaysApply: false
+---
+
+# Your rule content
+
+- Never Change the contents of any file called .env
+- .env file can be read but the keys or values may not be edited under any circumstances.

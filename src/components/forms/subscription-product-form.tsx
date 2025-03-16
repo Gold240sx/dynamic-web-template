@@ -42,35 +42,39 @@ export function SubscriptionProductForm({
   productId,
 }: SubscriptionProductFormProps) {
   const router = useRouter();
-
-  // Convert initial cents to dollars for the form
-  const defaultValues: SubscriptionProduct = initialData
-    ? {
-        ...initialData,
-        prices: initialData.prices.map((price) => ({
-          ...price,
-          unitAmount: price.unitAmount / 100,
-        })),
-      }
-    : {
-        name: "",
-        description: "",
-        active: true,
-        prices: [
-          {
-            active: true,
-            currency: "usd",
-            interval: "month",
-            intervalCount: 1,
-            type: "recurring",
-            unitAmount: 0,
-          },
-        ],
-      };
+  const utils = api.useUtils();
 
   const form = useForm<SubscriptionProduct>({
     resolver: zodResolver(subscriptionProductSchema),
-    defaultValues,
+    defaultValues: {
+      name: initialData?.name ?? "",
+      description: initialData?.description ?? "",
+      image: initialData?.image ?? "",
+      active: initialData?.active ?? true,
+      prices: initialData?.prices?.map((price) => ({
+        active: price.active,
+        currency: price.currency,
+        interval: price.interval,
+        type: price.type,
+        unitAmount: price.unitAmount / 100,
+        includesTrial: price.includesTrial ?? false,
+        trialLength: price.trialLength,
+        trialUnit: price.trialUnit,
+        requires_cc: price.requires_cc ?? true,
+      })) ?? [
+        {
+          active: true,
+          currency: "usd",
+          interval: "month",
+          type: "recurring",
+          unitAmount: 0,
+          includesTrial: false,
+          trialLength: undefined,
+          trialUnit: undefined,
+          requires_cc: true,
+        },
+      ],
+    },
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -82,8 +86,9 @@ export function SubscriptionProductForm({
     api.subscription.createProduct.useMutation({
       onSuccess: () => {
         toast.success("Product created successfully");
-        // Force a hard navigation
-        window.location.href = "/dashboard/subscriptions";
+        // Invalidate the products query
+        void utils.subscription.getAllProducts.invalidate();
+        router.push("/dashboard/subscriptions");
       },
       onError: (error) => {
         console.error("Error creating product:", error);
@@ -95,8 +100,12 @@ export function SubscriptionProductForm({
     api.subscription.updateProduct.useMutation({
       onSuccess: () => {
         toast.success("Product updated successfully");
-        // Force a hard navigation
-        window.location.href = "/dashboard/subscriptions";
+        // Invalidate both the single product and all products queries
+        void utils.subscription.getAllProducts.invalidate();
+        if (productId) {
+          void utils.subscription.getProduct.invalidate({ id: productId });
+        }
+        router.push("/dashboard/subscriptions");
       },
       onError: (error) => {
         console.error("Error updating product:", error);
@@ -124,7 +133,14 @@ export function SubscriptionProductForm({
       if (productId) {
         console.log("Updating product with ID:", productId);
         console.log("Update payload:", { id: productId, ...formattedData });
-        updateProduct({ id: productId, ...formattedData });
+        updateProduct({
+          id: productId,
+          name: formattedData.name,
+          description: formattedData.description,
+          image: formattedData.image,
+          active: formattedData.active,
+          prices: formattedData.prices,
+        });
       } else {
         console.log("Creating new product with data:", formattedData);
         createProduct(formattedData);
@@ -235,9 +251,12 @@ export function SubscriptionProductForm({
                   active: true,
                   currency: "usd",
                   interval: "month",
-                  intervalCount: 1,
                   type: "recurring",
                   unitAmount: 0,
+                  includesTrial: false,
+                  trialLength: undefined,
+                  trialUnit: undefined,
+                  requires_cc: true,
                 })
               }
             >
@@ -305,7 +324,7 @@ export function SubscriptionProductForm({
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     <FormField
                       control={form.control}
                       name={`prices.${index}.interval`}
@@ -322,39 +341,113 @@ export function SubscriptionProductForm({
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="day">Day</SelectItem>
-                              <SelectItem value="week">Week</SelectItem>
-                              <SelectItem value="month">Month</SelectItem>
-                              <SelectItem value="year">Year</SelectItem>
+                              <SelectItem value="month">Monthly</SelectItem>
+                              <SelectItem value="year">Yearly</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+                  </div>
 
+                  <FormField
+                    control={form.control}
+                    name={`prices.${index}.includesTrial`}
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel>Include Trial</FormLabel>
+                          <FormDescription>
+                            Enable to offer a trial period for this price
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  {form.watch(`prices.${index}.includesTrial`) && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name={`prices.${index}.trialLength`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Trial Length</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                min={1}
+                                placeholder="14"
+                                {...field}
+                                onChange={(e) =>
+                                  field.onChange(Number(e.target.value))
+                                }
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name={`prices.${index}.trialUnit`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Trial Unit</FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a unit" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="hour">Hours</SelectItem>
+                                <SelectItem value="day">Days</SelectItem>
+                                <SelectItem value="week">Weeks</SelectItem>
+                                <SelectItem value="month">Months</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  )}
+
+                  {form.watch(`prices.${index}.includesTrial`) && (
                     <FormField
                       control={form.control}
-                      name={`prices.${index}.intervalCount`}
+                      name={`prices.${index}.requires_cc`}
                       render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Interval Count</FormLabel>
+                        <FormItem className="flex items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                            <FormLabel>Require Credit Card</FormLabel>
+                            <FormDescription>
+                              If enabled, users must provide a credit card to
+                              start the trial
+                            </FormDescription>
+                          </div>
                           <FormControl>
-                            <Input
-                              type="number"
-                              min={1}
-                              placeholder="1"
-                              {...field}
-                              onChange={(e) =>
-                                field.onChange(Number(e.target.value))
-                              }
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
                             />
                           </FormControl>
-                          <FormMessage />
                         </FormItem>
                       )}
                     />
-                  </div>
+                  )}
 
                   <FormField
                     control={form.control}

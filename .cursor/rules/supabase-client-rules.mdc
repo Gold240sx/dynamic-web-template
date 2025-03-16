@@ -1,0 +1,10 @@
+---
+description: Don't edit any of these files. Use these files.
+globs: src/utils/supabase/client.ts, src/utils/supabase/middleware.ts, src/utils/supabase/server.ts
+alwaysApply: false
+---
+
+# Your rule content
+
+- Don't edit any of these files.
+- Don't try to recreate the use of these files. Use the functions of these files for cookie access and data write/read app wide.

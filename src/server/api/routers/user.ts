@@ -40,14 +40,6 @@ export const userRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      // If user is not admin, return limited data
-      if (!ctx.session?.user?.role || ctx.session.user.role !== "admin") {
-        return {
-          users: [],
-          totalPages: 0,
-        };
-      }
-
       const { search, page, limit } = input;
       const offset = (page - 1) * limit;
 

@@ -1,0 +1,1 @@
+ALTER TABLE `server-client-t3-blog_subscriptions` ADD COLUMN `stripe_subscription_id` text; 

@@ -1,0 +1,26 @@
+---
+description: Don't change auth system
+globs: 
+alwaysApply: false
+---
+
+# Your rule content
+
+- Don't ever suggest installing an authentication preference. 
+
+## If an authentication setup or dependency install of any kind (like next.auth, clerk, supabase auth, lucia, etc ) is required for resolving an error or implementing a feature, you must First
+
+- Check existing project to understand the authentication method used for the project. 
+- If unable to find how auth works within the project, ASK me how auth is used in the project. 
+
+I will then tell you one of the following.
+1. what auth is used
+2. what auth is planning on being used and should be implemented
+3. what auth is planning on being used and should not be implemented
+4. or will tell you that no auth should be implemented at all.
+   
+Provied each one so i can respond with just a number (1-4) alongside the authentication system name if required.
+
+THIS RULE MUST BE FOLLOWED EVEN IN YOLO MODE. DO NOT CONTINUE WITH TRYING TO INSTALL OR WRITE CODE PERTAINING TO AUTHENTICATION SYSTEM WITHOUT FOLLOWING THESE STEPS. 
+
+These steps should be followed every time that the steps have not been followed in the current chat, as well as anytime creating a new file in a new response, and part of the solution is to implement auth in that file, or if an existing  file has nothing pertaining to auth and the suggestion includes anything revolving or including a suggestion. Again, if we've gone through these steps in the current chat window, no need to follow the steps again, but if you cant find it in the current chat, follow these steps.

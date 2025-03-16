@@ -141,14 +141,14 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">User Role</p>
-                <p className="text-muted-foreground text-sm">
+                <div className="text-sm text-muted-foreground">
                   Current role:{" "}
                   <Badge
                     variant={user.role === "admin" ? "default" : "secondary"}
                   >
                     {user.role}
                   </Badge>
-                </p>
+                </div>
               </div>
               <Button
                 variant={user.role === "admin" ? "destructive" : "default"}
@@ -167,7 +167,7 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Account Status</p>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Current status:{" "}
                   <Badge
                     variant={
@@ -202,7 +202,7 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Can Comment</p>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Allow user to comment on blog posts
                 </p>
               </div>
@@ -221,7 +221,7 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Can Review</p>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Allow user to review products and services
                 </p>
               </div>
@@ -240,7 +240,7 @@ export default function UserProfileClient({ userId }: UserProfileClientProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-medium">Can Respond</p>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm text-muted-foreground">
                   Allow user to respond to comments and reviews
                 </p>
               </div>

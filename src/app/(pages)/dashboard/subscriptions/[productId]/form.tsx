@@ -23,11 +23,18 @@ export function SubscriptionProductFormWrapper({
     prices: initialData.prices.map((price) => ({
       active: price.active,
       currency: price.currency,
-      interval: price.interval,
-      intervalCount: price.intervalCount,
-      type: price.type,
+      interval: price.interval as "month" | "year",
+      type: price.type as "one_time" | "recurring",
       unitAmount: price.unitAmount,
-      trialPeriodDays: price.trialPeriodDays,
+      includesTrial: price.trialPeriodDays ? true : false,
+      requires_cc: true,
+      trialLength: price.trialPeriodDays ?? undefined,
+      trialUnit: (price.trialPeriodDays ? "day" : undefined) as
+        | "hour"
+        | "day"
+        | "week"
+        | "month"
+        | undefined,
     })),
   };
 

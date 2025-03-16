@@ -1,5 +1,3 @@
-"use client";
-
 import { createId } from "@paralleldrive/cuid2";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import Database from "better-sqlite3";
@@ -18,30 +16,114 @@ import {
 } from "./schema";
 import type { InferInsertModel } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import { eq } from "drizzle-orm";
+import type { SubscriptionProduct } from "./types";
 
 // Create a direct database connection without going through the environment validation
 const sqlite = new Database("src/server/db/sqlite.db");
-const db = drizzle(sqlite);
+const dbConnection = drizzle(sqlite);
+
+// Define IDs based on environment
+const isProd = process.env.NODE_ENV === "production";
+
+const SUBSCRIPTION_IDS = {
+  premiumPlus: {
+    product: isProd ? "prod_R52C1XYtD5aP4S" : "prod_RutfTUnFkw67zg",
+    prices: {
+      monthly: isProd
+        ? "price_1QCs89Bwx0wSGNq2Av4glMtP"
+        : "price_1R13sCBwx0wSGNq2j2FCNmmR",
+      yearly: isProd
+        ? "price_1QCsAzBwx0wSGNq2mXYLYtpI"
+        : "price_1R13smBwx0wSGNq2cB4HtkHr",
+    },
+  },
+  premium: {
+    product: isProd ? "prod_R52A5IvfX4FoOe" : "prod_RuteFP2jutz0uX",
+    prices: {
+      monthly: isProd
+        ? "price_1QCs6GBwx0wSGNq2dcjZZZJQ"
+        : "price_1R13r5Bwx0wSGNq23HRrgseL",
+      yearly: isProd
+        ? "price_1QCs9iBwx0wSGNq2STYaEoM2"
+        : "price_1R13r5Bwx0wSGNq2zjDYYhBy",
+    },
+  },
+};
+
+async function seedSubscriptionPrices() {
+  try {
+    // First, ensure all existing prices are inactive
+    await dbConnection
+      .update(subscriptionPrices)
+      .set({ active: false })
+      .where(eq(subscriptionPrices.active, true));
+
+    // Get the subscription products
+    const products = await dbConnection
+      .select()
+      .from(subscriptionProducts)
+      .where(eq(subscriptionProducts.active, true));
+
+    console.log("Found products:", products);
+
+    // Create prices for each product
+    for (const product of products) {
+      // Monthly price with trial
+      await dbConnection.insert(subscriptionPrices).values({
+        productId: product.id,
+        active: true,
+        currency: "usd",
+        interval: "month",
+        type: "recurring",
+        unitAmount: product.name.includes("Premium +") ? 1500 : 1000,
+        includesTrial: true,
+        trialLength: 14,
+        trialUnit: "day",
+      });
+
+      // Yearly price with trial (20% discount)
+      await dbConnection.insert(subscriptionPrices).values({
+        productId: product.id,
+        active: true,
+        currency: "usd",
+        interval: "year",
+        type: "recurring",
+        unitAmount: product.name.includes("Premium +") ? 14400 : 9600, // 20% discount
+        includesTrial: true,
+        trialLength: 14,
+        trialUnit: "day",
+      });
+    }
+
+    console.log("Successfully seeded subscription prices");
+  } catch (error) {
+    console.error("Error seeding subscription prices:", error);
+    throw error;
+  }
+}
 
 async function main() {
+  console.log(`Running seed in ${isProd ? "production" : "development"} mode`);
+
   // Clear existing data - we want to delete all rows
   /* eslint-disable drizzle/enforce-delete-with-where */
-  await db.delete(variantImages);
-  await db.delete(productVariants);
-  await db.delete(products);
-  await db.delete(productCategories);
-  await db.delete(posts);
-  await db.delete(subscriptionPrices);
-  await db.delete(subscriptionProducts);
-  await db.delete(orderItems);
-  await db.delete(orders);
-  await db.delete(companyReviews);
-  await db.delete(users);
+  await dbConnection.delete(variantImages);
+  await dbConnection.delete(productVariants);
+  await dbConnection.delete(products);
+  await dbConnection.delete(productCategories);
+  await dbConnection.delete(posts);
+  await dbConnection.delete(subscriptionPrices);
+  await dbConnection.delete(subscriptionProducts);
+  await dbConnection.delete(orderItems);
+  await dbConnection.delete(orders);
+  await dbConnection.delete(companyReviews);
+  await dbConnection.delete(users);
   /* eslint-enable drizzle/enforce-delete-with-where */
 
   // Create admin user with hashed password
   const hashedPassword = await bcrypt.hash("admin123!@#", 10);
-  const adminUser = await db
+  const adminUser = await dbConnection
     .insert(users)
     .values({
       id: createId(),
@@ -57,7 +139,7 @@ async function main() {
   }
 
   // Create some regular users for reviews
-  const regularUsers = await db
+  const regularUsers = await dbConnection
     .insert(users)
     .values([
       {
@@ -100,93 +182,92 @@ async function main() {
     throw new Error("Failed to create regular users");
   }
 
-  // Subscription product IDs
-  const premiumPlusId = "prod_RutfTUnFkw67zg"; // prod: "prod_R52C1XYtD5aP4S";
-  const premiumId = "prod_RuteFP2jutz0uX"; // prod: "prod_R52A5IvfX4FoOe";
-
   // Seed subscription products
-  await db.insert(subscriptionProducts).values([
+  await dbConnection.insert(subscriptionProducts).values([
     {
-      id: premiumPlusId,
+      id: SUBSCRIPTION_IDS.premiumPlus.product,
       name: "Baruchu Premium +",
       description:
         "For $15/month, You have access to unlimited subscription notifications, access to create groups.",
       active: true,
       image:
         "https://stripe-camo.global.ssl.fastly.net/5968a64198e1ed2787f067da1eb4dfa9d6f5b19828a2e0ae322d824a29537391/68747470733a2f2f66696c65732e7374726970652e636f6d2f6c696e6b732f4d44423859574e6a64463878547a4a3656304e436433677764314e48546e457966475a7358327870646d5666547a4a346358553361446431596b67315a32387757456c51646d78454e6b39453030666271446e433032",
+      stripeProductId: SUBSCRIPTION_IDS.premiumPlus.product,
     },
     {
-      id: premiumId,
+      id: SUBSCRIPTION_IDS.premium.product,
       name: "Baruchu Premium",
       description:
         "Support this platform and the channels that you subscribe to for a monthly donation of $10",
       active: true,
       image:
         "https://d1wqzb5bdbcre6.cloudfront.net/304262e169aa76763cb6678b1a4934d69385ca4230fd425f3288fdd72c46429d/68747470733a2f2f66696c65732e7374726970652e636f6d2f6c696e6b732f4d44423859574e6a64463878547a4a3656304e436433677764314e48546e457966475a7358327870646d56664e6e6c5a5647383154485a4753456c51636d64704d586c715358684965564179303033626d3963567867",
+      stripeProductId: SUBSCRIPTION_IDS.premium.product,
     },
   ]);
 
-  // Seed subscription prices with existing Stripe price IDs
-  await db.insert(subscriptionPrices).values([
+  // Seed subscription prices
+  await dbConnection.insert(subscriptionPrices).values([
     // Premium Plus Monthly
     {
-      id: "price_1R13sCBwx0wSGNq2j2FCNmmR", // prod: "price_1QCs89Bwx0wSGNq2Av4glMtP",
-      productId: premiumPlusId,
+      productId: SUBSCRIPTION_IDS.premiumPlus.product,
       currency: "usd",
-      type: "recurring",
+      type: "recurring" as const,
       unitAmount: 1500,
-      interval: "month",
-      intervalCount: 1,
+      interval: "month" as const,
       active: true,
+      stripePriceId: SUBSCRIPTION_IDS.premiumPlus.prices.monthly,
+      includesTrial: true,
+      trialLength: 14,
+      trialUnit: "day" as const,
+      requires_cc: false,
     },
     // Premium Plus Yearly
     {
-      id: "price_1R13smBwx0wSGNq2cB4HtkHr", // prod: "price_1QCsAzBwx0wSGNq2mXYLYtpI",
-      productId: premiumPlusId,
+      productId: SUBSCRIPTION_IDS.premiumPlus.product,
       currency: "usd",
-      type: "recurring",
-      unitAmount: 11000,
-      interval: "year",
-      intervalCount: 1,
+      type: "recurring" as const,
+      unitAmount: 14400, // 20% discount
+      interval: "year" as const,
       active: true,
+      stripePriceId: SUBSCRIPTION_IDS.premiumPlus.prices.yearly,
+      includesTrial: true,
+      trialLength: 14,
+      trialUnit: "day" as const,
+      requires_cc: false,
     },
     // Premium Monthly
     {
-      id: "price_1R13r5Bwx0wSGNq23HRrgseL", // prod: "price_1QCs6GBwx0wSGNq2dcjZZZJQ",
-      productId: premiumId,
+      productId: SUBSCRIPTION_IDS.premium.product,
       currency: "usd",
-      type: "recurring",
+      type: "recurring" as const,
       unitAmount: 1000,
-      interval: "month",
-      intervalCount: 1,
+      interval: "month" as const,
       active: true,
+      stripePriceId: SUBSCRIPTION_IDS.premium.prices.monthly,
+      includesTrial: true,
+      trialLength: 14,
+      trialUnit: "day" as const,
+      requires_cc: false,
     },
     // Premium Yearly
     {
-      id: "price_1R13r5Bwx0wSGNq2zjDYYhBy", // prod: "price_1QCs9iBwx0wSGNq2STYaEoM2",
-      productId: premiumId,
+      productId: SUBSCRIPTION_IDS.premium.product,
       currency: "usd",
-      type: "recurring",
-      unitAmount: 7500,
-      interval: "year",
-      intervalCount: 1,
+      type: "recurring" as const,
+      unitAmount: 9600, // 20% discount
+      interval: "year" as const,
       active: true,
-    },
-    // Premium Lifetime
-    {
-      id: "price_1R13r5Bwx0wSGNq2dH2awX3d", // prod: "price_1R0xK7Bwx0wSGNq2OwFTY3I4",
-      productId: premiumId,
-      currency: "usd",
-      type: "one_time",
-      unitAmount: 30000,
-      interval: "year",
-      intervalCount: 1,
-      active: true,
+      stripePriceId: SUBSCRIPTION_IDS.premium.prices.yearly,
+      includesTrial: true,
+      trialLength: 14,
+      trialUnit: "day" as const,
+      requires_cc: false,
     },
   ]);
 
   // Add company reviews
-  await db.insert(companyReviews).values([
+  await dbConnection.insert(companyReviews).values([
     {
       id: createId(),
       userId: regularUsers[0].id,
@@ -220,7 +301,7 @@ async function main() {
   ]);
 
   // Seed product categories
-  const categories = await db
+  const categories = await dbConnection
     .insert(productCategories)
     .values([
       { id: createId(), name: "Software", description: "Software products" },
@@ -236,7 +317,7 @@ async function main() {
   }
 
   // Seed products
-  const orangesProductResult = await db
+  const orangesProductResult = await dbConnection
     .insert(products)
     .values({
       id: createId(),
@@ -247,7 +328,7 @@ async function main() {
     })
     .returning();
 
-  const demoProductResult = await db
+  const demoProductResult = await dbConnection
     .insert(products)
     .values({
       id: createId(),
@@ -266,7 +347,7 @@ async function main() {
   const demoProduct = demoProductResult[0];
 
   // Seed variants for oranges
-  const orangeVariantsResult = await db
+  const orangeVariantsResult = await dbConnection
     .insert(productVariants)
     .values([
       {
@@ -309,7 +390,7 @@ async function main() {
     .returning();
 
   // Seed variant for demo product
-  const demoVariantResult = await db
+  const demoVariantResult = await dbConnection
     .insert(productVariants)
     .values({
       id: createId(),
@@ -338,7 +419,7 @@ async function main() {
   }
 
   // Seed images for orange variants
-  await db.insert(variantImages).values([
+  await dbConnection.insert(variantImages).values([
     {
       id: createId(),
       variantId: orangeVariants[0].id,
@@ -363,7 +444,7 @@ async function main() {
   ]);
 
   // Seed image for demo variant
-  await db.insert(variantImages).values({
+  await dbConnection.insert(variantImages).values({
     id: createId(),
     variantId: demoVariant.id,
     url: "https://www.shutterstock.com/image-photo/igniting-innovation-harnessing-power-coding-600w-2425426569.jpg",
@@ -372,7 +453,7 @@ async function main() {
   });
 
   // Seed blog posts
-  await db.insert(posts).values([
+  await dbConnection.insert(posts).values([
     {
       title: "Welcome to Our Store",
       slug: "welcome",
@@ -389,7 +470,12 @@ async function main() {
   console.log("Database has been seeded");
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+main()
+  .then(() => {
+    console.log("Seeding completed successfully");
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error("Error seeding database:", error);
+    process.exit(1);
+  });

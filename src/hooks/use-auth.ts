@@ -1,6 +1,5 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { User } from "@/server/db/types";
 
@@ -11,7 +10,6 @@ interface AuthResponse {
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -32,7 +30,7 @@ export function useAuth() {
     };
 
     void fetchUser();
-  }, [searchParams]);
+  }, []);
 
   return { user, loading };
 }

@@ -6,7 +6,7 @@ export default {
   schema: "./src/server/db/schema.ts",
   dialect: "sqlite",
   dbCredentials: {
-    url: env.DATABASE_URL,
+    url: "file:src/server/db/sqlite.db",
   },
   tablesFilter: ["server-client-t3-blog_*"],
 } satisfies Config;

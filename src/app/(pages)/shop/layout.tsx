@@ -2,6 +2,7 @@
 
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
+import PublicNavbar from "~/components/PublicNavbar";
 
 // Initialize Stripe outside of component to avoid recreation
 const stripePromise = loadStripe(
@@ -15,5 +16,10 @@ export default function ShopLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <Elements stripe={stripePromise}>{children}</Elements>;
+  return (
+    <Elements stripe={stripePromise}>
+      <PublicNavbar />
+      {children}
+    </Elements>
+  );
 }

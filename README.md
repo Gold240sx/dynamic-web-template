@@ -26,6 +26,11 @@ You can check out the [create-t3-app GitHub repository](https://github.com/t3-os
 
 Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
 
+## Left off at
+
+- Working on editing Subsription pricing (uses testing / live product keys based on environment variables)
+- Need to also fix the current user's profile page. (click on a signed in user's email.)
+
 ## Features
 
 ## Notifications
@@ -75,16 +80,13 @@ Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/ver
 - isSubscribed ( )
 - ✅Name Parser
 - ✅Order History
+- ✅ Trial tracking (even when a user deletes and recreates their account)
 
 ## Subscriptions
 
-- ✅ Stripe Subscription
-- Automated Subscription Creation (coming soon)
-- Subscription Management (coming soon)
-- Subscription Billing (coming soon)
-- Subscription Cancellation (coming soon)
-- Subscription Pause (coming soon)
-- Stripe Customer Portal (coming soon)
+- Subscription active / inactive status
+- ✅ Stripe automated Subscription & subscription Pricing management (CRUD) - No need to manually update subscription prices or subscriptions themselves in Stripe, we do it here and it updates in Stripe automatically.
+- ✅ Custom Trial Management (per price) with persistant trial tracking (even when a user deletes and recreates their account)
 
 ## Services
 

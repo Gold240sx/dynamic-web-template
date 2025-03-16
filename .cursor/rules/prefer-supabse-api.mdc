@@ -1,0 +1,9 @@
+---
+description: When creating functions for writing / reading , prefer using Supabase's api.
+globs: 
+alwaysApply: false
+---
+
+# Your rule content
+
+- When creating functions for writing / reading , prefer using Supabase's api, except for database seeding / migrating

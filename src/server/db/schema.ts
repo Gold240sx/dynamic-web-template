@@ -70,6 +70,59 @@ export const products = createTable(
   }),
 );
 
+export const productVariants = createTable(
+  "product_variants",
+  {
+    id: text("id").primaryKey(),
+    productId: text("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    name: text("name", { length: 256 }).notNull(),
+    description: text("description"),
+    price: int("price", { mode: "number" }).notNull(),
+    stock: int("stock", { mode: "number" }).notNull().default(-1),
+    isDigital: int("is_digital", { mode: "boolean" }).notNull().default(false),
+    isLive: int("is_live", { mode: "boolean" }).notNull().default(false),
+    stripeProductId: text("stripe_product_id"),
+    attributes: text("attributes", { mode: "json" }).notNull(),
+    createdAt: int("created_at", { mode: "timestamp" })
+      .default(sql`(unixepoch())`)
+      .notNull(),
+    updatedAt: int("updated_at", { mode: "timestamp" }).$onUpdate(
+      () => new Date(),
+    ),
+    isPhysical: integer("is_physical", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    weight: integer("weight_in_grams").default(0),
+    length: integer("length_in_mm").default(0),
+    width: integer("width_in_mm").default(0),
+    height: integer("height_in_mm").default(0),
+    requiresShipping: integer("requires_shipping", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    flatRateShipping: integer("flat_rate_shipping_cents").default(0),
+  },
+  (table) => ({
+    productIdIdx: index("product_variants_product_id_idx").on(table.productId),
+  }),
+);
+
+export const productsRelations = relations(products, ({ many }) => ({
+  variants: many(productVariants),
+  reviews: many(productReviews),
+}));
+
+export const productVariantsRelations = relations(
+  productVariants,
+  ({ one }) => ({
+    product: one(products, {
+      fields: [productVariants.productId],
+      references: [products.id],
+    }),
+  }),
+);
+
 export const posts = createTable(
   "post",
   {
@@ -153,44 +206,6 @@ export const siteSettings = createTable(
 
 export type ShippingEstimate = InferModel<typeof shippingEstimates>;
 export type SiteSettings = InferModel<typeof siteSettings>;
-
-export const productVariants = createTable(
-  "product_variants",
-  {
-    id: text("id").primaryKey(),
-    productId: text("product_id")
-      .notNull()
-      .references(() => products.id, { onDelete: "cascade" }),
-    name: text("name", { length: 256 }).notNull(),
-    description: text("description"),
-    price: int("price", { mode: "number" }).notNull(),
-    stock: int("stock", { mode: "number" }).notNull().default(-1),
-    isDigital: int("is_digital", { mode: "boolean" }).notNull().default(false),
-    isLive: int("is_live", { mode: "boolean" }).notNull().default(false),
-    stripeProductId: text("stripe_product_id"),
-    attributes: text("attributes", { mode: "json" }).notNull(),
-    createdAt: int("created_at", { mode: "timestamp" })
-      .default(sql`(unixepoch())`)
-      .notNull(),
-    updatedAt: int("updated_at", { mode: "timestamp" }).$onUpdate(
-      () => new Date(),
-    ),
-    isPhysical: integer("is_physical", { mode: "boolean" })
-      .notNull()
-      .default(false),
-    weight: integer("weight_in_grams").default(0),
-    length: integer("length_in_mm").default(0),
-    width: integer("width_in_mm").default(0),
-    height: integer("height_in_mm").default(0),
-    requiresShipping: integer("requires_shipping", { mode: "boolean" })
-      .notNull()
-      .default(false),
-    flatRateShipping: integer("flat_rate_shipping_cents").default(0),
-  },
-  (table) => ({
-    productIdIdx: index("product_variants_product_id_idx").on(table.productId),
-  }),
-);
 
 export const variantImages = createTable(
   "variant_image",
@@ -325,6 +340,15 @@ export const users = createTable(
     canReview: integer("can_review", { mode: "boolean" })
       .notNull()
       .default(true),
+    // Trial tracking
+    hasUsedTrial: integer("has_used_trial", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    isCurrentTrialUser: integer("is_current_trial_user", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    trialStartedAt: integer("trial_started_at", { mode: "timestamp" }),
+    trialEndsAt: integer("trial_ends_at", { mode: "timestamp" }),
     createdAt: integer("created_at", { mode: "timestamp" })
       .notNull()
       .$defaultFn(() => new Date()),
@@ -350,6 +374,7 @@ export const subscriptionProducts = createTable(
     active: int("active", { mode: "boolean" }).notNull().default(true),
     image: text("image"),
     metadata: text("metadata", { mode: "json" }),
+    stripeProductId: text("stripe_product_id"),
     createdAt: int("created_at", { mode: "timestamp" })
       .default(sql`(unixepoch())`)
       .notNull(),
@@ -374,14 +399,22 @@ export const subscriptionPrices = createTable(
     active: int("active", { mode: "boolean" }).notNull().default(true),
     currency: text("currency").notNull().default("usd"),
     interval: text("interval", {
-      enum: ["day", "week", "month", "year"],
+      enum: ["month", "year"],
     }).notNull(),
-    intervalCount: int("interval_count").notNull().default(1),
-    trialPeriodDays: int("trial_period_days"),
     type: text("type", {
       enum: ["one_time", "recurring"],
     }).notNull(),
     unitAmount: int("unit_amount").notNull(),
+    stripePriceId: text("stripe_price_id"),
+    // Trial settings
+    includesTrial: int("includes_trial", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    trialLength: int("trial_length"),
+    trialUnit: text("trial_unit", { enum: ["hour", "day", "week", "month"] }),
+    requires_cc: int("requires_cc", { mode: "boolean" })
+      .notNull()
+      .default(true),
     createdAt: int("created_at", { mode: "timestamp" })
       .default(sql`(unixepoch())`)
       .notNull(),
@@ -406,6 +439,7 @@ export const subscriptions = createTable(
     priceId: text("price_id")
       .notNull()
       .references(() => subscriptionPrices.id),
+    stripeSubscriptionId: text("stripe_subscription_id"),
     status: text("status", {
       enum: [
         "trialing",
@@ -453,11 +487,12 @@ export const subscriptionProductsRelations = relations(
 
 export const subscriptionPricesRelations = relations(
   subscriptionPrices,
-  ({ one }) => ({
+  ({ one, many }) => ({
     product: one(subscriptionProducts, {
       fields: [subscriptionPrices.productId],
       references: [subscriptionProducts.id],
     }),
+    subscriptions: many(subscriptions),
   }),
 );
 
@@ -465,6 +500,10 @@ export const subscriptionsRelations = relations(subscriptions, ({ one }) => ({
   price: one(subscriptionPrices, {
     fields: [subscriptions.priceId],
     references: [subscriptionPrices.id],
+  }),
+  user: one(users, {
+    fields: [subscriptions.userId],
+    references: [users.id],
   }),
 }));
 
@@ -487,6 +526,58 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
   }),
 }));
 
+export const userAddresses = createTable(
+  "user_addresses",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => createId()),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    firstName: text("first_name").notNull(),
+    lastName: text("last_name").notNull(),
+    line1: text("line1").notNull(),
+    line2: text("line2"),
+    city: text("city").notNull(),
+    state: text("state").notNull(),
+    postalCode: text("postal_code").notNull(),
+    country: text("country").notNull(),
+    phone: text("phone"),
+    isDefault: integer("is_default", { mode: "boolean" })
+      .notNull()
+      .default(false),
+    type: text("type", {
+      enum: ["billing", "shipping", "installation", "service"],
+    })
+      .notNull()
+      .default("billing"),
+    metadata: text("metadata", { mode: "json" }),
+    createdAt: integer("created_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => ({
+    userIdIdx: index("user_addresses_user_id_idx").on(table.userId),
+    defaultIdx: index("user_addresses_default_idx").on(
+      table.userId,
+      table.type,
+      table.isDefault,
+    ),
+  }),
+);
+
+export const userAddressesRelations = relations(userAddresses, ({ one }) => ({
+  user: one(users, {
+    fields: [userAddresses.userId],
+    references: [users.id],
+  }),
+}));
+
 export const usersRelations = relations(users, ({ many }) => ({
   addresses: many(userAddresses),
   orders: many(orders),
@@ -494,6 +585,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   productReviews: many(productReviews),
   companyReviews: many(companyReviews),
   postLikes: many(postLikes),
+  subscriptions: many(subscriptions),
 }));
 
 export const postLikes = createTable(
@@ -621,7 +713,6 @@ export const companyReviews = createTable(
 export const postsRelations = relations(posts, ({ many }) => ({
   comments: many(blogComments),
   likes: many(postLikes),
-  reviews: many(productReviews),
 }));
 
 export const blogCommentsRelations = relations(blogComments, ({ one }) => ({
@@ -662,11 +753,6 @@ export const companyReviewsRelations = relations(companyReviews, ({ one }) => ({
     fields: [companyReviews.userId],
     references: [users.id],
   }),
-}));
-
-export const productsRelations = relations(products, ({ many }) => ({
-  variants: many(productVariants),
-  reviews: many(productReviews),
 }));
 
 export const commentResponses = createTable(
@@ -760,47 +846,38 @@ export const reviewResponsesRelations = relations(
   }),
 );
 
-export const userAddresses = createTable(
-  "user_addresses",
+export const trialUsage = createTable(
+  "trial_usage",
   {
-    id: text("id")
-      .primaryKey()
-      .$defaultFn(() => createId()),
-    userId: text("user_id")
+    id: text("id").primaryKey(),
+    email: text("email").notNull(),
+    trialStartedAt: integer("trial_started_at", {
+      mode: "timestamp",
+    }).notNull(),
+    trialEndedAt: integer("trial_ended_at", { mode: "timestamp" }),
+    subscriptionPriceId: text("subscription_price_id")
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    name: text("name").notNull(), // e.g. "Home", "Office", "Solar Installation Site"
-    firstName: text("first_name").notNull(),
-    lastName: text("last_name").notNull(),
-    line1: text("line1").notNull(),
-    line2: text("line2"),
-    city: text("city").notNull(),
-    state: text("state").notNull(),
-    postalCode: text("postal_code").notNull(),
-    country: text("country").notNull(),
-    phone: text("phone"),
-    isDefault: integer("is_default", { mode: "boolean" })
+      .references(() => subscriptionPrices.id, { onDelete: "cascade" }),
+    status: text("status", { enum: ["active", "completed", "cancelled"] })
       .notNull()
-      .default(false),
-    type: text("type", {
-      enum: ["billing", "shipping", "installation", "service"],
-    })
-      .notNull()
-      .default("billing"),
-    metadata: text("metadata", { mode: "json" }), // For storing additional type-specific data
+      .default("active"),
     createdAt: integer("created_at", { mode: "timestamp" })
-      .notNull()
-      .$defaultFn(() => new Date()),
-    updatedAt: integer("updated_at", { mode: "timestamp" })
-      .notNull()
-      .$defaultFn(() => new Date()),
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).$onUpdate(
+      () => new Date(),
+    ),
   },
   (table) => ({
-    userIdIdx: index("user_addresses_user_id_idx").on(table.userId),
-    defaultIdx: index("user_addresses_default_idx").on(
-      table.userId,
-      table.type,
-      table.isDefault,
-    ),
+    emailIdx: index("trial_usage_email_idx").on(table.email),
+    statusIdx: index("trial_usage_status_idx").on(table.status),
+    priceIdx: index("trial_usage_price_idx").on(table.subscriptionPriceId),
   }),
 );
+
+export const trialUsageRelations = relations(trialUsage, ({ one }) => ({
+  subscriptionPrice: one(subscriptionPrices, {
+    fields: [trialUsage.subscriptionPriceId],
+    references: [subscriptionPrices.id],
+  }),
+}));

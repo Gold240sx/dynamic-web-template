@@ -1,12 +1,12 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Suspense } from "react";
+import { ThemeProvider } from "~/components/theme-provider";
 
 function ProvidersContent({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const pathname = usePathname();
 
   return children;
@@ -15,7 +15,14 @@ function ProvidersContent({ children }: { children: ReactNode }) {
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <Suspense>
-      <ProvidersContent>{children}</ProvidersContent>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+      >
+        <ProvidersContent>{children}</ProvidersContent>
+      </ThemeProvider>
     </Suspense>
   );
 }

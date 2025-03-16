@@ -6,6 +6,7 @@ import { createTRPCReact } from "@trpc/react-query";
 import { type inferRouterInputs, type inferRouterOutputs } from "@trpc/server";
 import { useState } from "react";
 import SuperJSON from "superjson";
+import { useAuth } from "~/hooks/use-auth";
 
 import { type AppRouter } from "~/server/api/root";
 import { createQueryClient } from "./query-client";
@@ -38,6 +39,7 @@ export type RouterOutputs = inferRouterOutputs<AppRouter>;
 
 export function TRPCReactProvider(props: { children: React.ReactNode }) {
   const queryClient = getQueryClient();
+  const { user } = useAuth();
 
   const [trpcClient] = useState(() =>
     api.createClient({
@@ -53,13 +55,8 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
           headers: () => {
             const headers = new Headers();
             headers.set("x-trpc-source", "nextjs-react");
-            // Get the userId from the cookie
-            const userId = document.cookie
-              .split("; ")
-              .find((row) => row.startsWith("userId="))
-              ?.split("=")[1];
-            if (userId) {
-              headers.set("x-user-id", userId);
+            if (user?.id) {
+              headers.set("x-user-id", user.id);
             }
             return headers;
           },

@@ -24,12 +24,19 @@ export function SubscriptionProductFormWrapper({
       active: price.active,
       currency: price.currency,
       interval: price.interval,
-      intervalCount: price.intervalCount,
       type: price.type,
       unitAmount: price.unitAmount,
-      trialPeriodDays: price.trialPeriodDays,
+      includesTrial: price.includesTrial ?? false,
+      requires_cc: price.requires_cc ?? true,
+      trialLength: price.trialLength,
+      trialUnit: price.trialUnit,
     })),
   };
 
-  return <SubscriptionProductForm initialData={formattedData} />;
+  return (
+    <SubscriptionProductForm
+      initialData={formattedData}
+      productId={initialData.id}
+    />
+  );
 }
